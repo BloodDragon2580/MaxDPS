@@ -1,242 +1,438 @@
 local _, addonTable = ...;
 
---- @type MaxDps
-if not MaxDps then return end
-local MaxDps = MaxDps;
+-- @type MaxDps;
+if not MaxDps then return end;
 local Hunter = addonTable.Hunter;
-local IsSpellInRange = IsSpellInRange;
-local GetSpellInfo = GetSpellInfo;
+local MaxDps = MaxDps;
+
+local UnitPower = UnitPower;
+local UnitPowerMax = UnitPowerMax;
+
+local itemID = GetInventoryItemID('player', INVSLOT_MAINHAND);
+
+local mainHandSubClassID = itemID and  select(13, GetItemInfo(itemID));
+
+local TwoHanderWepCheck = mainHandSubClassID and (mainHandSubClassID == 1 or mainHandSubClassID == 5 or mainHandSubClassID == 8 or mainHandSubClassID == 10);
 
 local SV = {
-	SteelTrap          = 162488,
-	Harpoon            = 190925,
-	WildfireInfusion   = 271014,
-	AlphaPredator      = 269737,
-	MongooseBite       = 259387,
-	MongooseFury       = 259388,
-	CoordinatedAssault = 266779,
-	AspectOfTheEagle   = 186289,
-	AMurderOfCrows     = 131894,
-	Carve              = 187708,
-	WildfireBomb       = 259495,
-	GuerrillaTactics   = 264332,
-	Chakrams           = 259391,
-	KillCommand        = 259489,
-	Butchery           = 212436,
-	FlankingStrike     = 269751,
-	SerpentSting       = 271788,
-	VipersVenom        = 268501,
-	TermsOfEngagement  = 265895,
-	TipOfTheSpear      = 260285,
-	RaptorStrike       = 186270,
-	BirdsOfPrey        = 260331,
-	LatentPoison       = 273283,
-
-	PheromoneBomb      = 270323,
-	ShrapnelBomb       = 270335,
-	VolatileBomb       = 271045,
-
-	InternalBleeding   = 270343,
+	MongooseBite = 259387,
+	RaptorStrike = 186270,
+	SteelTrap = 162488,
+	Harpoon = 190925,
+	TermsOfEngagement = 265895,
+	Muzzle = 187707,
+	AspectOfTheEagle = 186289,
+	KillShot = 320976,
+	CoordinatedAssaultEmpower = 361738,
+	BirdsOfPrey = 260331,
+	DeathChakram = 375891,
+	WildfireBomb = 259495,
+	Stampede = 201430,
+	CoordinatedAssault = 360952,
+	FuryOfTheEagle = 203415,
+	ExplosiveShot = 212431,
+	Carve = 187708,
+	Butchery = 212436,
+	ShrapnelBomb = 270335,
+	InternalBleeding = 270343,
+	WildfireInfusion = 271014,
+	KillCommand = 259489,
+	FlankingStrike = 269751,
+	Spearhead = 360966,
+	SerpentSting = 271788,
+	VipersVenom = 268501,
+	HydrasBite = 260241,
+	ShreddedArmor = 410167,
+	Bombardier = 389880,
+	DeadlyDuo = 378962,
+	PheromoneBomb = 270323,
+	MongooseFury = 259388,
+	AlphaPredator = 269737,
+	CoordinatedKill = 385739,
+	Ranger = 385695,
+	RuthlessMarauder = 385718,
 };
-
 local A = {
-	UpCloseAndPersonal = 278533,
-	LatentPoison       = 273283,
-	VenomousFangs      = 274590,
-	WildernessSurvival = 278532,
-	BlurOfTalons       = 277653,
 };
-
-setmetatable(SV, Hunter.spellMeta);
-
-function Hunter:SurvivalBombId()
-	if MaxDps:FindSpell(SV.PheromoneBomb) then
-		return SV.PheromoneBomb;
-	elseif MaxDps:FindSpell(SV.VolatileBomb) then
-		return SV.VolatileBomb;
-	elseif MaxDps:FindSpell(SV.ShrapnelBomb) then
-		return SV.ShrapnelBomb
-	else
-		return SV.WildfireBomb;
-	end
-end
-
 function Hunter:Survival()
 	local fd = MaxDps.FrameData;
-	local cooldown, buff, debuff, timeShift, talents, azerite, currentSpell =
-		fd.cooldown, fd.buff, fd.debuff, fd.timeShift, fd.talents, fd.azerite, fd.currentSpell;
+	local timeTo35 = fd.timeToDie;
+	local timeTo20 = fd.timeToDie;
+	local targetHp = MaxDps:TargetPercentHealth() * 100;
+	local targets = fd.targets and fd.targets or 1;
 
-	local minus = 0;
-	fd.focus, fd.focusMax, fd.focusRegen = Hunter:Focus(minus, timeShift);
-
-	Hunter:Cds();
-
-	fd.targets = MaxDps:SmartAoe();
-
-	if fd.targets < 3 and talents[SV.WildfireInfusion] and talents[SV.AlphaPredator] and talents[SV.MongooseBite] then
-		return Hunter:SurvivalMbApWfiSt();
+	-- call_action_list,name=cds;
+	local result = Hunter:SurvivalCds();
+	if result then
+		return result;
 	end
 
-	if fd.targets < 3 and talents[SV.WildfireInfusion] then
-		return Hunter:SurvivalWfiSt();
+	-- call_action_list,name=st,if=active_enemies<3;
+	if targets < 3 then
+		local result = Hunter:SurvivalSt();
+		if result then
+			return result;
+		end
 	end
 
-	if fd.targets < 2 then
-		return Hunter:SurvivalSingleTarget();
-	end
-
-	if fd.targets > 1 then
-		return Hunter:SurvivalCleave();
+	-- call_action_list,name=cleave,if=active_enemies>2;
+	if targets > 2 then
+		local result = Hunter:SurvivalCleave();
+		if result then
+			return result;
+		end
 	end
 end
+function Hunter:SurvivalCds()
+	local fd = MaxDps.FrameData;
+	local timeTo35 = fd.timeToDie;
+	local timeTo20 = fd.timeToDie;
+	local targetHp = MaxDps:TargetPercentHealth() * 100;
+	local cooldown = fd.cooldown;
+	local talents = fd.talents;
+	local focus = UnitPower('player', Enum.PowerType.Focus);
+	local focusMax = UnitPowerMax('player', Enum.PowerType.Focus);
+	local focusPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local focusRegen = select(2,GetPowerRegen());
+	local focusRegenCombined = focusRegen + focus;
+	local focusDeficit = UnitPowerMax('player', Enum.PowerType.Focus) - focus;
+	local focusTimeToMax = focusMax - focus / focusRegen;
 
-function Hunter:Cds()
-	local cooldown = MaxDps.FrameData.cooldown;
+	-- harpoon,if=talent.terms_of_engagement.enabled&focus<focus.max;
+	if talents[SV.Harpoon] and cooldown[SV.Harpoon].ready and (talents[SV.TermsOfEngagement] and focus < focusMax) then
+		return SV.Harpoon;
+	end
 
-	MaxDps:GlowEssences();
+	-- muzzle;
+	if talents[SV.Muzzle] and cooldown[SV.Muzzle].ready then
+		return SV.Muzzle;
+	end
 
-	MaxDps:GlowCooldown(SV.CoordinatedAssault, cooldown[SV.CoordinatedAssault].ready);
-
-	MaxDps:GlowCooldown(
-		SV.AspectOfTheEagle,
-		cooldown[SV.AspectOfTheEagle].ready and not IsSpellInRange(SV.RaptorStrike, 'target')
-	);
+	-- aspect_of_the_eagle,if=target.distance>=6;
+	if talents[SV.AspectOfTheEagle] and cooldown[SV.AspectOfTheEagle].ready then
+		return SV.AspectOfTheEagle;
+	end
 end
 
 function Hunter:SurvivalCleave()
 	local fd = MaxDps.FrameData;
-	local cooldown, buff, debuff, talents, azerite, currentSpell, targets, focus, focusMax, focusRegen, gcd, timeShift =
-	fd.cooldown, fd.buff, fd.debuff, fd.talents, fd.azerite, fd.currentSpell, fd.targets, fd.focus, fd.focusMax, fd.focusRegen, fd.gcd, fd.timeShift;
+	local timeTo35 = fd.timeToDie;
+	local timeTo20 = fd.timeToDie;
+	local targetHp = MaxDps:TargetPercentHealth() * 100;
+	local cooldown = fd.cooldown;
+	local buff = fd.buff;
+	local debuff = fd.debuff;
+	local talents = fd.talents;
+	local timeShift = fd.timeShift;
+	local targets = fd.targets and fd.targets or 1;
+	local gcd = fd.gcd;
+	local timeToDie = fd.timeToDie;
+	local focus = UnitPower('player', Enum.PowerType.Focus);
+	local focusMax = UnitPowerMax('player', Enum.PowerType.Focus);
+	local focusPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local focusRegen = select(2,GetPowerRegen());
+	local focusRegenCombined = focusRegen + focus;
+	local focusDeficit = UnitPowerMax('player', Enum.PowerType.Focus) - focus;
+	local focusTimeToMax = focusMax - focus / focusRegen;
+	local castRegen = UnitPower('player', Enum.PowerType.CastRegen);
+	local castRegenMax = UnitPowerMax('player', Enum.PowerType.CastRegen);
+	local castRegenPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local castRegenRegen = select(2,GetPowerRegen());
+	local castRegenRegenCombined = castRegenRegen + castRegen;
+	local castRegenDeficit = UnitPowerMax('player', Enum.PowerType.CastRegen) - castRegen;
+	local castRegenTimeToMax = castRegenMax - castRegen / castRegenRegen;
 
-	local BombSpell = Hunter:SurvivalBombId();
-	local castRegen = focusRegen * timeShift;
-	local focusWithRegen = focus + castRegen;
-	local mongooseBiteCost = 30;
-
-	local carveCdr = targets;
-	local MongooseBite = MaxDps:FindSpell(265888) and 265888 or SV.MongooseBite;
-	local RaptorStrike = MaxDps:FindSpell(265189) and 265189 or SV.RaptorStrike;
-	local canCarve = not talents[SV.Butchery] and cooldown[SV.Carve].ready and focusWithRegen >= 35;
-
-	-- a_murder_of_crows;
-	if talents[SV.AMurderOfCrows] and focusWithRegen >= 30 and cooldown[SV.AMurderOfCrows].ready then
-		return SV.AMurderOfCrows;
+	-- kill_shot,if=buff.coordinated_assault_empower.up&talent.birds_of_prey;
+	if talents[SV.KillShot] and cooldown[SV.KillShot].ready and focus >= 10 and (buff[SV.CoordinatedAssaultEmpower].up and talents[SV.BirdsOfPrey]) then
+		return SV.KillShot;
 	end
 
-	-- carve,if=dot.shrapnel_bomb.ticking;
-	if canCarve and debuff[SV.ShrapnelBomb].up then
+	-- death_chakram;
+	if talents[SV.DeathChakram] and cooldown[SV.DeathChakram].ready then
+		return SV.DeathChakram;
+	end
+
+	-- wildfire_bomb;
+	if talents[SV.WildfireBomb] and cooldown[SV.WildfireBomb].ready then
+		return SV.WildfireBomb;
+	end
+
+	-- stampede;
+	if talents[SV.Stampede] and cooldown[SV.Stampede].ready then
+		return SV.Stampede;
+	end
+
+	-- coordinated_assault,if=cooldown.fury_of_the_eagle.remains|!talent.fury_of_the_eagle;
+	if talents[SV.CoordinatedAssault] and cooldown[SV.CoordinatedAssault].ready and (cooldown[SV.FuryOfTheEagle].remains or not talents[SV.FuryOfTheEagle]) then
+		return SV.CoordinatedAssault;
+	end
+
+	-- explosive_shot;
+	if talents[SV.ExplosiveShot] and cooldown[SV.ExplosiveShot].ready and focus >= 20 then
+		return SV.ExplosiveShot;
+	end
+
+	-- carve,if=cooldown.wildfire_bomb.full_recharge_time>spell_targets%2;
+	if talents[SV.Carve] and cooldown[SV.Carve].ready and focus >= 35 and (cooldown[SV.WildfireBomb].fullRecharge > targets / 2) then
 		return SV.Carve;
 	end
 
-	-- wildfire_bomb,if=!talent.guerrilla_tactics.enabled|full_recharge_time<gcd;
-	if (cooldown[SV.WildfireBomb].ready and not talents[SV.GuerrillaTactics]) or cooldown[SV.WildfireBomb].fullRecharge < gcd then
-		return BombSpell;
+	-- fury_of_the_eagle,if=raid_event.adds.exists&(!talent.butchery|cooldown.butchery.full_recharge_time>cast_time);
+	if talents[SV.FuryOfTheEagle] and cooldown[SV.FuryOfTheEagle].ready and (targets > 1 and ( not talents[SV.Butchery] or cooldown[SV.Butchery].fullRecharge > timeShift )) then
+		return SV.FuryOfTheEagle;
 	end
 
-	-- mongoose_bite,target_if=max:debuff.latent_poison.stack,if=debuff.latent_poison.stack=10;
-	if debuff[SV.LatentPoison].count >= 10 then
-		return MongooseBite;
-	end
-
-	-- chakrams;
-	if talents[SV.Chakrams] and cooldown[SV.Chakrams].ready and focusWithRegen >= 30 then
-		return SV.Chakrams;
-	end
-
-	-- kill_command,target_if=min:bloodseeker.remains,if=focus+cast_regen<focus.max;
-	if cooldown[SV.KillCommand].ready and focusWithRegen + 15 < focusMax then
-		return SV.KillCommand;
-	end
-
-	-- butchery,if=full_recharge_time<gcd|!talent.wildfire_infusion.enabled|dot.shrapnel_bomb.ticking&dot.internal_bleeding.stack<3;
-	if talents[SV.Butchery] and cooldown[SV.Butchery].charges >= 1 and (
-		cooldown[SV.Butchery].fullRecharge < gcd or
-		not talents[SV.WildfireInfusion] or
-		debuff[SV.ShrapnelBomb].up and debuff[SV.InternalBleeding].count < 3
-	) then
+	-- butchery,if=raid_event.adds.exists;
+	if talents[SV.Butchery] and cooldown[SV.Butchery].ready and focus >= 30 and (targets > 1) then
 		return SV.Butchery;
 	end
 
-	-- carve,if=talent.guerrilla_tactics.enabled;
-	if canCarve and talents[SV.GuerrillaTactics] then
+	-- butchery,if=(full_recharge_time<gcd|dot.shrapnel_bomb.ticking&(dot.internal_bleeding.stack<2|dot.shrapnel_bomb.remains<gcd|raid_event.adds.remains<10))&!raid_event.adds.exists;
+	if talents[SV.Butchery] and cooldown[SV.Butchery].ready and focus >= 30 and (( cooldown[SV.Butchery].fullRecharge < gcd or debuff[SV.ShrapnelBomb].up and ( debuff[SV.InternalBleeding].count < 2 or debuff[SV.ShrapnelBomb].remains < gcd or raid_event.adds.remains < 10 ) ) and not targets > 1) then
+		return SV.Butchery;
+	end
+
+	-- fury_of_the_eagle,if=!raid_event.adds.exists;
+	if talents[SV.FuryOfTheEagle] and cooldown[SV.FuryOfTheEagle].ready and (targets <= 1) then
+		return SV.FuryOfTheEagle;
+	end
+
+	-- carve,if=dot.shrapnel_bomb.ticking;
+	if talents[SV.Carve] and cooldown[SV.Carve].ready and focus >= 35 and (debuff[SV.ShrapnelBomb].up) then
 		return SV.Carve;
+	end
+
+	-- butchery,if=(!next_wi_bomb.shrapnel|!talent.wildfire_infusion);
+	if talents[SV.Butchery] and cooldown[SV.Butchery].ready and focus >= 30 and (( not nextWiBomb == SV.ShrapnelBomb or not talents[SV.WildfireInfusion] )) then
+		return SV.Butchery;
+	end
+
+	-- mongoose_bite,target_if=max:debuff.latent_poison.stack,if=debuff.latent_poison.stack>8;
+	if talents[SV.MongooseBite] and focus >= 30 and (debuff[SV.LatentPoison].count > 8) then
+		return SV.MongooseBite;
+	end
+
+	-- raptor_strike,target_if=max:debuff.latent_poison.stack,if=debuff.latent_poison.stack>8;
+	if talents[SV.RaptorStrike] and focus >= 30 and (debuff[SV.LatentPoison].count > 8) then
+		return SV.RaptorStrike;
+	end
+
+	-- kill_command,target_if=min:bloodseeker.remains,if=focus+cast_regen<focus.max&full_recharge_time<gcd;
+	if talents[SV.KillCommand] and cooldown[SV.KillCommand].ready and (focus + castRegen < focusMax and cooldown[SV.KillCommand].fullRecharge < gcd) then
+		return SV.KillCommand;
 	end
 
 	-- flanking_strike,if=focus+cast_regen<focus.max;
-	if talents[SV.FlankingStrike] and cooldown[SV.FlankingStrike].ready and focusWithRegen + 30 < focusMax then
+	if talents[SV.FlankingStrike] and cooldown[SV.FlankingStrike].ready and (focus + castRegen < focusMax) then
 		return SV.FlankingStrike;
 	end
 
-	-- wildfire_bomb,if=dot.wildfire_bomb.refreshable|talent.wildfire_infusion.enabled;
-	if cooldown[SV.WildfireBomb].ready and (debuff[SV.WildfireBomb].refreshable or talents[SV.WildfireInfusion]) then
-		return BombSpell;
-	end
-
-	-- serpent_sting,target_if=min:remains,if=buff.vipers_venom.up;
-	if focusWithRegen >= 20 and buff[SV.VipersVenom].up then
-		return SV.SerpentSting;
-	end
-
-	-- carve,if=cooldown.wildfire_bomb.remains>variable.carve_cdr%2;
-	if canCarve and cooldown[SV.WildfireBomb].remains > carveCdr % 2 then
+	-- carve;
+	if talents[SV.Carve] and cooldown[SV.Carve].ready and focus >= 35 then
 		return SV.Carve;
 	end
 
-	-- steel_trap;
-	if talents[SV.SteelTrap] and cooldown[SV.SteelTrap].ready then
+	-- kill_shot,if=!buff.coordinated_assault.up;
+	if talents[SV.KillShot] and cooldown[SV.KillShot].ready and focus >= 10 and (not buff[SV.CoordinatedAssault].up) then
+		return SV.KillShot;
+	end
+
+	-- steel_trap,if=focus+cast_regen<focus.max;
+	if talents[SV.SteelTrap] and cooldown[SV.SteelTrap].ready and (focus + castRegen < focusMax) then
 		return SV.SteelTrap;
 	end
 
-	-- harpoon,if=talent.terms_of_engagement.enabled;
-	if cooldown[SV.Harpoon].ready and talents[SV.TermsOfEngagement] then
-		return SV.Harpoon;
+	-- spearhead;
+	if talents[SV.Spearhead] and cooldown[SV.Spearhead].ready then
+		return SV.Spearhead;
 	end
 
-	-- serpent_sting,target_if=min:remains,if=refreshable&buff.tip_of_the_spear.stack<3;
-	if focusWithRegen >= 20 and debuff[SV.SerpentSting].refreshable and buff[SV.TipOfTheSpear].count < 3 then
+	-- mongoose_bite,target_if=min:dot.serpent_sting.remains,if=buff.spearhead.remains;
+	if talents[SV.MongooseBite] and focus >= 30 and (buff[SV.Spearhead].remains) then
+		return SV.MongooseBite;
+	end
+
+	-- serpent_sting,target_if=min:remains,if=refreshable&target.time_to_die>12&(!talent.vipers_venom|talent.hydras_bite);
+	if talents[SV.SerpentSting] and focus >= 10 and (debuff[SV.SerpentSting].refreshable and timeToDie > 12 and ( not talents[SV.VipersVenom] or talents[SV.HydrasBite] )) then
 		return SV.SerpentSting;
 	end
 
-	-- mongoose_bite,target_if=max:debuff.latent_poison.stack;
-	if talents[SV.MongooseBite] and focusWithRegen > mongooseBiteCost then
-		return MongooseBite;
+	-- mongoose_bite,target_if=min:dot.serpent_sting.remains;
+	if talents[SV.MongooseBite] and focus >= 30 then
+		return SV.MongooseBite;
+	end
+
+	-- raptor_strike,target_if=min:dot.serpent_sting.remains;
+	if talents[SV.RaptorStrike] and focus >= 30 then
+		return SV.RaptorStrike;
+	end
+end
+
+function Hunter:SurvivalSt()
+	local fd = MaxDps.FrameData;
+	local timeTo35 = fd.timeToDie;
+	local timeTo20 = fd.timeToDie;
+	local targetHp = MaxDps:TargetPercentHealth() * 100;
+	local cooldown = fd.cooldown;
+	local buff = fd.buff;
+	local debuff = fd.debuff;
+	local talents = fd.talents;
+	local targets = fd.targets and fd.targets or 1;
+	local gcd = fd.gcd;
+	local timeToDie = fd.timeToDie;
+	local focus = UnitPower('player', Enum.PowerType.Focus);
+	local focusMax = UnitPowerMax('player', Enum.PowerType.Focus);
+	local focusPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local focusRegen = select(2,GetPowerRegen());
+	local focusRegenCombined = focusRegen + focus;
+	local focusDeficit = UnitPowerMax('player', Enum.PowerType.Focus) - focus;
+	local focusTimeToMax = focusMax - focus / focusRegen;
+	local castRegen = UnitPower('player', Enum.PowerType.CastRegen);
+	local castRegenMax = UnitPowerMax('player', Enum.PowerType.CastRegen);
+	local castRegenPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local castRegenRegen = select(2,GetPowerRegen());
+	local castRegenRegenCombined = castRegenRegen + castRegen;
+	local castRegenDeficit = UnitPowerMax('player', Enum.PowerType.CastRegen) - castRegen;
+	local castRegenTimeToMax = castRegenMax - castRegen / castRegenRegen;
+
+	-- kill_command,target_if=min:bloodseeker.remains,if=talent.spearhead&debuff.shredded_armor.stack<1&cooldown.spearhead.remains<2*gcd;
+	if talents[SV.KillCommand] and cooldown[SV.KillCommand].ready and (talents[SV.Spearhead] and debuff[SV.ShreddedArmor].count < 1 and cooldown[SV.Spearhead].remains < 2 * gcd) then
+		return SV.KillCommand;
+	end
+
+	-- wildfire_bomb,if=talent.spearhead&cooldown.spearhead.remains<2*gcd&debuff.shredded_armor.stack>0;
+	if talents[SV.WildfireBomb] and cooldown[SV.WildfireBomb].ready and (talents[SV.Spearhead] and cooldown[SV.Spearhead].remains < 2 * gcd and debuff[SV.ShreddedArmor].count > 0) then
+		return SV.WildfireBomb;
+	end
+
+	-- death_chakram,if=focus+cast_regen<focus.max|talent.spearhead&!cooldown.spearhead.remains;
+	if talents[SV.DeathChakram] and cooldown[SV.DeathChakram].ready and (focus + castRegen < focusMax or talents[SV.Spearhead] and not cooldown[SV.Spearhead].remains) then
+		return SV.DeathChakram;
+	end
+
+	-- spearhead,if=focus+action.kill_command.cast_regen>focus.max-10&(cooldown.death_chakram.remains|!talent.death_chakram);
+	if talents[SV.Spearhead] and cooldown[SV.Spearhead].ready and (focus > focusMax - 10 and ( cooldown[SV.DeathChakram].remains or not talents[SV.DeathChakram] )) then
+		return SV.Spearhead;
+	end
+
+	-- kill_shot,if=buff.coordinated_assault_empower.up;
+	if talents[SV.KillShot] and cooldown[SV.KillShot].ready and focus >= 10 and (buff[SV.CoordinatedAssaultEmpower].up) then
+		return SV.KillShot;
+	end
+
+	-- wildfire_bomb,if=(raid_event.adds.in>cooldown.wildfire_bomb.full_recharge_time-(cooldown.wildfire_bomb.full_recharge_time%3.5)&debuff.shredded_armor.stack>0&(full_recharge_time<2*gcd|talent.bombardier&!cooldown.coordinated_assault.remains|talent.bombardier&buff.coordinated_assault.up&buff.coordinated_assault.remains<2*gcd)|!raid_event.adds.exists&time_to_die<7)&set_bonus.tier30_4pc;
+	if talents[SV.WildfireBomb] and cooldown[SV.WildfireBomb].ready and (MaxDps.tier[30].count and (MaxDps.tier[30].count == 4)) then
+		return SV.WildfireBomb;
+	end
+
+	-- kill_command,target_if=min:bloodseeker.remains,if=full_recharge_time<gcd&focus+cast_regen<focus.max&(buff.deadly_duo.stack>2|buff.spearhead.remains&dot.pheromone_bomb.remains);
+	if talents[SV.KillCommand] and cooldown[SV.KillCommand].ready and (cooldown[SV.KillCommand].fullRecharge < gcd and focus + castRegen < focusMax and ( buff[SV.DeadlyDuo].count > 2 or buff[SV.Spearhead].remains and debuff[SV.PheromoneBomb].remains )) then
+		return SV.KillCommand;
+	end
+
+	-- kill_command,target_if=min:bloodseeker.remains,if=cooldown.wildfire_bomb.full_recharge_time<3*gcd&debuff.shredded_armor.stack<1&set_bonus.tier30_4pc&!buff.spearhead.remains;
+	if talents[SV.KillCommand] and cooldown[SV.KillCommand].ready and (cooldown[SV.WildfireBomb].fullRecharge < 3 * gcd and debuff[SV.ShreddedArmor].count < 1 and MaxDps.tier[30] and MaxDps.tier[30].count and (MaxDps.tier[30].count == 4) and not buff[SV.Spearhead].remains) then
+		return SV.KillCommand;
+	end
+
+	-- mongoose_bite,if=buff.spearhead.remains;
+	if talents[SV.MongooseBite] and focus >= 30 and (buff[SV.Spearhead].remains) then
+		return SV.MongooseBite;
+	end
+
+	-- mongoose_bite,if=active_enemies=1&target.time_to_die<focus%(variable.mb_rs_cost-cast_regen)*gcd|buff.mongoose_fury.up&buff.mongoose_fury.remains<gcd;
+	if talents[SV.MongooseBite] and focus >= 30 and (targets == 1 and timeToDie < focus / ( mbRsCost - castRegen ) * gcd or buff[SV.MongooseFury].up and buff[SV.MongooseFury].remains < gcd) then
+		return SV.MongooseBite;
+	end
+
+	-- kill_shot,if=!buff.coordinated_assault.up;
+	if talents[SV.KillShot] and cooldown[SV.KillShot].ready and focus >= 10 and (not buff[SV.CoordinatedAssault].up) then
+		return SV.KillShot;
+	end
+
+	-- raptor_strike,if=active_enemies=1&target.time_to_die<focus%(variable.mb_rs_cost-cast_regen)*gcd;
+	if talents[SV.RaptorStrike] and focus >= 30 and (targets == 1 and timeToDie < focus / ( mbRsCost - castRegen ) * gcd) then
+		return SV.RaptorStrike;
+	end
+
+	-- serpent_sting,target_if=min:remains,if=!dot.serpent_sting.ticking&target.time_to_die>7&!talent.vipers_venom;
+	if talents[SV.SerpentSting] and focus >= 10 and (not debuff[SV.SerpentSting].up and timeToDie > 7 and not talents[SV.VipersVenom]) then
+		return SV.SerpentSting;
+	end
+
+	-- fury_of_the_eagle,if=buff.seething_rage.up&buff.seething_rage.remains<3*gcd&(!raid_event.adds.exists|active_enemies>1|raid_event.adds.exists&raid_event.adds.in>40);
+	if talents[SV.FuryOfTheEagle] and cooldown[SV.FuryOfTheEagle].ready and (buff[SV.SeethingRage].up and buff[SV.SeethingRage].remains < 3 * gcd and ( not targets > 1 or targets > 1 or targets > 1 )) then
+		return SV.FuryOfTheEagle;
+	end
+
+	-- mongoose_bite,if=talent.alpha_predator&buff.mongoose_fury.up&buff.mongoose_fury.remains<focus%(variable.mb_rs_cost-cast_regen)*gcd|buff.seething_rage.remains&active_enemies=1;
+	if talents[SV.MongooseBite] and focus >= 30 and (talents[SV.AlphaPredator] and buff[SV.MongooseFury].up and buff[SV.MongooseFury].remains < focus / ( mbRsCost - castRegen ) * gcd or buff[SV.SeethingRage].remains and targets == 1) then
+		return SV.MongooseBite;
+	end
+
+	-- flanking_strike,if=focus+cast_regen<focus.max;
+	if talents[SV.FlankingStrike] and cooldown[SV.FlankingStrike].ready and (focus + castRegen < focusMax) then
+		return SV.FlankingStrike;
+	end
+
+	-- stampede;
+	if talents[SV.Stampede] and cooldown[SV.Stampede].ready then
+		return SV.Stampede;
+	end
+
+	-- coordinated_assault,if=(!talent.coordinated_kill&target.health.pct<20&(!buff.spearhead.remains&cooldown.spearhead.remains|!talent.spearhead)|talent.coordinated_kill&(!buff.spearhead.remains&cooldown.spearhead.remains|!talent.spearhead))&(!raid_event.adds.exists|raid_event.adds.in>90);
+	if talents[SV.CoordinatedAssault] and cooldown[SV.CoordinatedAssault].ready and (( not talents[SV.CoordinatedKill] and targetHp < 20 and ( not buff[SV.Spearhead].remains and cooldown[SV.Spearhead].remains or not talents[SV.Spearhead] ) or talents[SV.CoordinatedKill] and ( not buff[SV.Spearhead].remains and cooldown[SV.Spearhead].remains or not talents[SV.Spearhead] ) ) and ( not targets > 1  )) then
+		return SV.CoordinatedAssault;
+	end
+
+	-- kill_command,target_if=min:bloodseeker.remains,if=full_recharge_time<gcd&focus+cast_regen<focus.max&(cooldown.flanking_strike.remains|!talent.flanking_strike);
+	if talents[SV.KillCommand] and cooldown[SV.KillCommand].ready and (cooldown[SV.KillCommand].fullRecharge < gcd and focus + castRegen < focusMax and ( cooldown[SV.FlankingStrike].remains or not talents[SV.FlankingStrike] )) then
+		return SV.KillCommand;
+	end
+
+	-- serpent_sting,target_if=min:remains,if=refreshable&!talent.vipers_venom;
+	if talents[SV.SerpentSting] and focus >= 10 and (debuff[SV.SerpentSting].refreshable and not talents[SV.VipersVenom]) then
+		return SV.SerpentSting;
+	end
+
+	-- wildfire_bomb,if=raid_event.adds.in>cooldown.wildfire_bomb.full_recharge_time-(cooldown.wildfire_bomb.full_recharge_time%3.5)&full_recharge_time<2*gcd;
+	if talents[SV.WildfireBomb] and cooldown[SV.WildfireBomb].ready and (cooldown[SV.WildfireBomb].fullRecharge - ( cooldown[SV.WildfireBomb].fullRecharge / 3.5 ) and cooldown[SV.WildfireBomb].fullRecharge < 2 * gcd) then
+		return SV.WildfireBomb;
+	end
+
+	-- mongoose_bite,if=dot.shrapnel_bomb.ticking;
+	if talents[SV.MongooseBite] and focus >= 30 and (debuff[SV.ShrapnelBomb].up) then
+		return SV.MongooseBite;
+	end
+
+	-- wildfire_bomb,if=raid_event.adds.in>cooldown.wildfire_bomb.full_recharge_time-(cooldown.wildfire_bomb.full_recharge_time%3.5)&set_bonus.tier30_4pc&(!dot.wildfire_bomb.ticking&debuff.shredded_armor.stack>0&focus+cast_regen<focus.max|active_enemies>1);
+	if talents[SV.WildfireBomb] and cooldown[SV.WildfireBomb].ready and (cooldown[SV.WildfireBomb].fullRecharge - ( cooldown[SV.WildfireBomb].fullRecharge / 3.5 ) and MaxDps.tier[30] and MaxDps.tier[30].count and (MaxDps.tier[30].count == 4) and ( not debuff[SV.WildfireBomb].up and debuff[SV.ShreddedArmor].count > 0 and focus + castRegen < focusMax or targets > 1 )) then
+		return SV.WildfireBomb;
+	end
+
+	-- mongoose_bite,target_if=max:debuff.latent_poison.stack,if=buff.mongoose_fury.up;
+	if talents[SV.MongooseBite] and focus >= 30 and (buff[SV.MongooseFury].up) then
+		return SV.MongooseBite;
+	end
+
+	-- explosive_shot,if=talent.ranger&(!raid_event.adds.exists|raid_event.adds.in>28);
+	if talents[SV.ExplosiveShot] and cooldown[SV.ExplosiveShot].ready and focus >= 20 and (talents[SV.Ranger] and ( not targets > 1 )) then
+		return SV.ExplosiveShot;
+	end
+
+	-- fury_of_the_eagle,if=(!equipped.djaruun_pillar_of_the_elder_flame|cooldown.elder_flame_408821.remains>40)&target.health.pct<65&talent.ruthless_marauder&(!raid_event.adds.exists|raid_event.adds.exists&raid_event.adds.in>40);
+	if talents[SV.FuryOfTheEagle] and cooldown[SV.FuryOfTheEagle].ready and (( not IsEquippedItem(DjaruunPillarOfTheElderFlame) or cooldown[SV.ElderFlame408821].remains > 40 ) and targetHp < 65 and talents[SV.RuthlessMarauder] and ( not targets > 1 or targets > 1  )) then
+		return SV.FuryOfTheEagle;
+	end
+
+	-- mongoose_bite,target_if=max:debuff.latent_poison.stack,if=focus+action.kill_command.cast_regen>focus.max-10|set_bonus.tier30_4pc;
+	if talents[SV.MongooseBite] and focus >= 30 and (focus > focusMax - 10 or MaxDps.tier[30] and MaxDps.tier[30].count and (MaxDps.tier[30].count == 4)) then
+		return SV.MongooseBite;
 	end
 
 	-- raptor_strike,target_if=max:debuff.latent_poison.stack;
-	return RaptorStrike;
-end
-
-function Hunter:SurvivalMbApWfiSt()
-	local fd = MaxDps.FrameData;
-	local cooldown, buff, debuff, talents, azerite, currentSpell, targets, focus, focusMax, focusRegen, gcd, timeShift =
-		fd.cooldown, fd.buff, fd.debuff, fd.talents, fd.azerite, fd.currentSpell, fd.targets, fd.focus, fd.focusMax, fd.focusRegen, fd.gcd, fd.timeShift;
-
-	local BombSpell = Hunter:SurvivalBombId();
-	local nextWiBomb = select(7, GetSpellInfo(GetSpellInfo(259495)));
-	local castRegen = focusRegen * timeShift;
-	local focusWithRegen = focus + castRegen;
-	local gcdRegen = focusRegen * gcd;
-	local mongooseBiteCost = 30;
-	local MongooseBite = MaxDps:FindSpell(265888) and 265888 or SV.MongooseBite;
-
-	-- serpent_sting,if=!dot.serpent_sting.ticking;
-	if focus >= 20 and not debuff[SV.SerpentSting].up then
-		return SV.SerpentSting;
-	end
-
-	-- wildfire_bomb,if=full_recharge_time<gcd|(focus+cast_regen<focus.max)&(next_wi_bomb.volatile&dot.serpent_sting.ticking&dot.serpent_sting.refreshable|next_wi_bomb.pheromone&!buff.mongoose_fury.up&focus+cast_regen<focus.max-action.kill_command.cast_regen*3);
-	if cooldown[SV.WildfireBomb].fullRecharge < gcd or cooldown[SV.WildfireBomb].charges >= 1 and (focusWithRegen < focusMax) and
-		(
-			(nextWiBomb == SV.VolatileBomb and debuff[SV.SerpentSting].up and debuff[SV.SerpentSting].refreshable) or
-			(nextWiBomb == SV.PheromoneBomb and not buff[SV.MongooseFury].up and focusWithRegen < focusMax - gcdRegen * 3)
-		)
-	then
-		return BombSpell;
-	end
-
-	-- a_murder_of_crows;
-	if talents[SV.AMurderOfCrows] and focus >= 30 and cooldown[SV.AMurderOfCrows].ready then
-		return SV.AMurderOfCrows;
+	if talents[SV.RaptorStrike] and focus >= 30 then
+		return SV.RaptorStrike;
 	end
 
 	-- steel_trap;
@@ -244,293 +440,19 @@ function Hunter:SurvivalMbApWfiSt()
 		return SV.SteelTrap;
 	end
 
-	-- mongoose_bite,if=buff.mongoose_fury.remains&next_wi_bomb.pheromone;
-	if focus >= 27 and buff[SV.MongooseFury].up and nextWiBomb == SV.PheromoneBomb then
-		return MongooseBite;
-	end
-
-	-- kill_command,if=focus+cast_regen<focus.max&(buff.mongoose_fury.stack<5|focus<action.mongoose_bite.cost);
-	if cooldown[SV.KillCommand].ready and (focusWithRegen + 15 < focusMax) and (buff[SV.MongooseFury].count < 5 or focus < mongooseBiteCost) then
-		return SV.KillCommand;
-	end
-
-	-- wildfire_bomb,if=next_wi_bomb.shrapnel&focus>60&dot.serpent_sting.remains>3*gcd;
-	if cooldown[SV.WildfireBomb].charges >= 1 and nextWiBomb == SV.ShrapnelBomb and
-		focus > 60 and debuff[SV.SerpentSting].remains > 3 * gcd
-	then
-		return BombSpell;
-	end
-
-	-- serpent_sting,if=buff.vipers_venom.up|refreshable&(!talent.mongoose_bite.enabled|!talent.vipers_venom.enabled|next_wi_bomb.volatile&!dot.shrapnel_bomb.ticking|azerite.latent_poison.enabled|azerite.venomous_fangs.enabled);
-	if focus >= 20 and
-		(buff[SV.VipersVenom].up or debuff[SV.SerpentSting].refreshable and
-			(
-				not talents[SV.MongooseBite] or
-				not talents[SV.VipersVenom] or
-				(nextWiBomb == SV.VolatileBomb and not debuff[SV.ShrapnelBomb].up) or
-				azerite[A.LatentPoison] > 0 or
-				azerite[A.VenomousFangs] > 0
-			)
-		)
-	then
-		return SV.SerpentSting;
-	end
-
-	-- mongoose_bite,if=buff.mongoose_fury.up|focus>60|dot.shrapnel_bomb.ticking;
-	if focus >= 27 and
-		(buff[SV.MongooseFury].up or focus > 60 or debuff[SV.ShrapnelBomb].up)
-	then
-		return MongooseBite;
-	end
-
-	-- serpent_sting,if=refreshable;
-	if focus >= 20 and debuff[SV.SerpentSting].refreshable then
-		return SV.SerpentSting;
-	end
-
-	-- wildfire_bomb,if=next_wi_bomb.volatile&dot.serpent_sting.ticking|next_wi_bomb.pheromone|next_wi_bomb.shrapnel&focus>50;
-	if cooldown[SV.WildfireBomb].ready and
-		(
-			nextWiBomb == SV.VolatileBomb and debuff[SV.SerpentSting].up or
-			nextWiBomb == SV.PheromoneBomb or
-			nextWiBomb == SV.ShrapnelBomb and focus > 50
-		)
-	then
-		return BombSpell;
-	end
-end
-
-function Hunter:SurvivalSingleTarget()
-	local fd = MaxDps.FrameData;
-	local cooldown, buff, debuff, talents, azerite, currentSpell, targets, focus, focusMax, focusRegen, gcd, timeShift =
-	fd.cooldown, fd.buff, fd.debuff, fd.talents, fd.azerite, fd.currentSpell, fd.targets, fd.focus, fd.focusMax, fd.focusRegen, fd.gcd, fd.timeShift;
-
-	local castRegen = focusRegen * timeShift;
-	local focusWithRegen = focus + castRegen;
-	local mongooseBiteCost = 30;
-	local MongooseBite = MaxDps:FindSpell(265888) and 265888 or SV.MongooseBite;
-	local RaptorStrike = MaxDps:FindSpell(265189) and 265189 or SV.RaptorStrike;
-
-
-	-- a_murder_of_crows;
-	if talents[SV.AMurderOfCrows] and focusWithRegen >= 30 and cooldown[SV.AMurderOfCrows].ready then
-		return SV.AMurderOfCrows;
-	end
-
-	-- mongoose_bite,if=talent.birds_of_prey.enabled&buff.coordinated_assault.up&(buff.coordinated_assault.remains<gcd|buff.blur_of_talons.up&buff.blur_of_talons.remains<gcd);
-	if talents[SV.BirdsOfPrey] and buff[SV.CoordinatedAssault].up and (
-		buff[SV.CoordinatedAssault].remains < gcd or
-		buff[A.BlurOfTalons].up and buff[A.BlurOfTalons].remains < gcd
-	) then
-		return MongooseBite;
-	end
-
-	-- raptor_strike,if=talent.birds_of_prey.enabled&buff.coordinated_assault.up&(buff.coordinated_assault.remains<gcd|buff.blur_of_talons.up&buff.blur_of_talons.remains<gcd);
-	if talents[SV.BirdsOfPrey] and buff[SV.CoordinatedAssault].up and (
-		buff[SV.CoordinatedAssault].remains < gcd or
-		buff[A.BlurOfTalons].up and buff[A.BlurOfTalons].remains < gcd
-	) then
-		return RaptorStrike;
-	end
-
-	-- serpent_sting,if=buff.vipers_venom.up&buff.vipers_venom.remains<gcd;
-	if buff[SV.VipersVenom].up and buff[SV.VipersVenom].remains < gcd then
-		return SV.SerpentSting;
-	end
-
-	-- kill_command,if=focus+cast_regen<focus.max&(!talent.alpha_predator.enabled|full_recharge_time<gcd);
-	if cooldown[SV.KillCommand].ready and focusWithRegen + 15 < focusMax and (
-		not talents[SV.AlphaPredator] or
-		cooldown[SV.KillCommand].fullRecharge < gcd
-	) then
-		return SV.KillCommand;
-	end
-
-	-- wildfire_bomb,if=focus+cast_regen<focus.max&(full_recharge_time<gcd|!dot.wildfire_bomb.ticking&(buff.mongoose_fury.down|full_recharge_time<4.5*gcd));
-	if cooldown[SV.WildfireBomb].ready and focusWithRegen < focusMax and (
-		cooldown[SV.WildfireBomb].fullRecharge < gcd or
-		not debuff[SV.WildfireBomb].up and (
-			not buff[SV.MongooseFury].up or
-			cooldown[SV.WildfireBomb].remains < 4.5 * gcd
-		)
-	) then
+	-- wildfire_bomb,if=raid_event.adds.in>cooldown.wildfire_bomb.full_recharge_time-(cooldown.wildfire_bomb.full_recharge_time%3.5)&!dot.wildfire_bomb.ticking;
+	if talents[SV.WildfireBomb] and cooldown[SV.WildfireBomb].ready and (cooldown[SV.WildfireBomb].fullRecharge - ( cooldown[SV.WildfireBomb].fullRecharge / 3.5 ) and not debuff[SV.WildfireBomb].up) then
 		return SV.WildfireBomb;
 	end
 
-	-- serpent_sting,if=buff.vipers_venom.react&dot.serpent_sting.remains<4*gcd|!talent.vipers_venom.enabled&!dot.serpent_sting.ticking&!buff.coordinated_assault.up
-	if buff[SV.VipersVenom].up and debuff[SV.SerpentSting].remains < 4 * gcd or
-		not talents[SV.VipersVenom] and not debuff[SV.SerpentSting].up and not buff[SV.CoordinatedAssault].up
-	then
-		return SV.SerpentSting;
-	end
-
-	-- serpent_sting,if=refreshable&(azerite.latent_poison.rank>2|azerite.latent_poison.enabled&azerite.venomous_fangs.enabled|(azerite.latent_poison.enabled|azerite.venomous_fangs.enabled)&(!azerite.blur_of_talons.enabled|!talent.birds_of_prey.enabled|!buff.coordinated_assault.up))
-	if debuff[SV.SerpentSting].refreshable and (
-		azerite[A.LatentPoison] > 2 or
-		azerite[A.LatentPoison] > 0 and azerite[A.VenomousFangs] > 0 or
-		(azerite[A.LatentPoison] > 0 or azerite[A.VenomousFangs] > 0) and (
-			azerite[A.BlurOfTalons] == 0 or not talents[SV.BirdsOfPrey] or not buff[SV.CoordinatedAssault].up
-		)
-	) then
-		return SV.SerpentSting;
-	end
-
-	-- steel_trap;
-	if talents[SV.SteelTrap] and cooldown[SV.SteelTrap].ready then
-		return SV.SteelTrap;
-	end
-
-	-- harpoon,if=talent.terms_of_engagement.enabled|azerite.up_close_and_personal.enabled;
-	if talents[SV.TermsOfEngagement] or azerite[A.UpCloseAndPersonal] > 0 then
-		return SV.Harpoon;
-	end
-
-	-- chakrams;
-	if talents[SV.Chakrams] and cooldown[SV.Chakrams].ready and focusWithRegen >= 30 then
-		return SV.Chakrams;
-	end
-
-	-- flanking_strike,if=focus+cast_regen<focus.max;
-	if talents[SV.FlankingStrike] and cooldown[SV.FlankingStrike].ready and focusWithRegen + 30 < focusMax then
-		return SV.FlankingStrike;
-	end
-
-	-- kill_command,if=focus+cast_regen<focus.max&(buff.mongoose_fury.stack<4|focus<action.mongoose_bite.cost);
-	if cooldown[SV.KillCommand].ready and focusWithRegen + 15 < focusMax and (
-		buff[SV.MongooseFury].count < 4 or
-			focus < mongooseBiteCost
-	) then
+	-- kill_command,target_if=min:bloodseeker.remains,if=focus+cast_regen<focus.max;
+	if talents[SV.KillCommand] and cooldown[SV.KillCommand].ready and (focus + castRegen < focusMax) then
 		return SV.KillCommand;
 	end
 
-	-- mongoose_bite,if=buff.mongoose_fury.up|focus>60;
-	if talents[SV.MongooseBite] and focusWithRegen >= 30 and (buff[SV.MongooseFury].up or focus > 60) then
-		return MongooseBite;
-	end
-
-	-- raptor_strike;
-	if not talents[SV.MongooseBite] and focus >= 30 then
-		return RaptorStrike;
-	end
-
-	-- serpent_sting,if=dot.serpent_sting.refreshable&!buff.coordinated_assault.up;
-	if focusWithRegen >= 20 and debuff[SV.SerpentSting].refreshable and not buff[SV.CoordinatedAssault].up then
-		return SV.SerpentSting;
-	end
-
-	-- wildfire_bomb,if=dot.wildfire_bomb.refreshable;
-	if cooldown[SV.WildfireBomb].ready and debuff[SV.WildfireBomb].refreshable then
-		return SV.WildfireBomb;
+	-- coordinated_assault,if=!talent.coordinated_kill&time_to_die>140;
+	if talents[SV.CoordinatedAssault] and cooldown[SV.CoordinatedAssault].ready and (not talents[SV.CoordinatedKill] and timeToDie > 140) then
+		return SV.CoordinatedAssault;
 	end
 end
 
-function Hunter:SurvivalWfiSt()
-	local fd = MaxDps.FrameData;
-	local cooldown, buff, debuff, talents, azerite, currentSpell, targets, focus, focusMax, focusRegen, gcd, timeShift =
-	fd.cooldown, fd.buff, fd.debuff, fd.talents, fd.azerite, fd.currentSpell, fd.targets, fd.focus, fd.focusMax, fd.focusRegen, fd.gcd, fd.timeShift;
-
-	local BombSpell = Hunter:SurvivalBombId();
-	local nextWiBomb = select(7, GetSpellInfo(GetSpellInfo(259495)));
-	local castRegen = focusRegen * timeShift;
-	local focusWithRegen = focus + castRegen;
-	local gcdRegen = focusRegen * gcd;
-	local mongooseBiteCost = 30;
-	local MongooseBite = MaxDps:FindSpell(265888) and 265888 or SV.MongooseBite;
-	local RaptorStrike = MaxDps:FindSpell(265189) and 265189 or SV.RaptorStrike;
-
-	-- a_murder_of_crows;
-	if talents[SV.AMurderOfCrows] and focus >= 30 and cooldown[SV.AMurderOfCrows].ready then
-		return SV.AMurderOfCrows;
-	end
-
-	-- mongoose_bite,if=azerite.wilderness_survival.enabled&next_wi_bomb.volatile&dot.serpent_sting.remains>2.1*gcd&dot.serpent_sting.remains<3.5*gcd&cooldown.wildfire_bomb.remains>2.5*gcd;
-	if talents[SV.MongooseBite] and azerite[A.WildernessSurvival] > 0 and nextWiBomb == SV.VolatileBomb and
-		debuff[SV.SerpentSting].remains > 2.1 * gcd and debuff[SV.SerpentSting].remains < 3.5 * gcd
-		and cooldown[SV.WildfireBomb].remains > 2.5 * gcd
-	then
-		return MongooseBite;
-	end
-
-	-- wildfire_bomb,if=full_recharge_time<gcd|(focus+cast_regen<focus.max)&(next_wi_bomb.volatile&dot.serpent_sting.ticking&dot.serpent_sting.refreshable|next_wi_bomb.pheromone&!buff.mongoose_fury.up&focus+cast_regen<focus.max-action.kill_command.cast_regen*3);
-	if cooldown[SV.WildfireBomb].fullRecharge < gcd or cooldown[SV.WildfireBomb].ready and (focusWithRegen < focusMax) and
-		(
-			nextWiBomb == SV.VolatileBomb and debuff[SV.SerpentSting].up and debuff[SV.SerpentSting].refreshable or
-			nextWiBomb == SV.PheromoneBomb and not buff[SV.MongooseFury].up and focusWithRegen < focusMax - gcdRegen * 3
-		)
-	then
-		return BombSpell;
-	end
-
-	-- kill_command,if=focus+cast_regen<focus.max&buff.tip_of_the_spear.stack<3&(!talent.alpha_predator.enabled|buff.mongoose_fury.stack<5|focus<action.mongoose_bite.cost);
-	if cooldown[SV.KillCommand].ready and focusWithRegen + 15 < focusMax and buff[SV.TipOfTheSpear].count < 3 and (
-		not talents[SV.AlphaPredator] or buff[SV.MongooseFury].count < 5 or focus < mongooseBiteCost
-	) then
-		return SV.KillCommand;
-	end
-
-	-- raptor_strike,if=dot.internal_bleeding.stack<3&dot.shrapnel_bomb.ticking&!talent.mongoose_bite.enabled;
-	if focus >= 30 and debuff[SV.InternalBleeding].count < 3 and debuff[SV.ShrapnelBomb].up and not talents[SV.MongooseBite] then
-		return RaptorStrike;
-	end
-
-	-- wildfire_bomb,if=next_wi_bomb.shrapnel&buff.mongoose_fury.down&(cooldown.kill_command.remains>gcd|focus>60)&!dot.serpent_sting.refreshable;
-	if cooldown[SV.WildfireBomb].ready and nextWiBomb == SV.ShrapnelBomb and not buff[SV.MongooseFury].up and
-		(cooldown[SV.KillCommand].remains > gcd or focus > 60) and not debuff[SV.SerpentSting].refreshable
-	then
-		return BombSpell;
-	end
-
-	-- steel_trap;
-	if talents[SV.SteelTrap] and cooldown[SV.SteelTrap].ready then
-		return SV.SteelTrap;
-	end
-
-	-- flanking_strike,if=focus+cast_regen<focus.max;
-	if talents[SV.FlankingStrike] and cooldown[SV.FlankingStrike].ready and focusWithRegen + 30 < focusMax then
-		return SV.FlankingStrike;
-	end
-
-	-- serpent_sting,if=buff.vipers_venom.up|refreshable&(!talent.mongoose_bite.enabled|!talent.vipers_venom.enabled|next_wi_bomb.volatile&!dot.shrapnel_bomb.ticking|azerite.latent_poison.enabled|azerite.venomous_fangs.enabled|buff.mongoose_fury.stack=5);
-	if focus >= 20 and (buff[SV.VipersVenom].up or debuff[SV.SerpentSting].refreshable and (
-		not talents[SV.MongooseBite] or
-		not talents[SV.VipersVenom] or
-		nextWiBomb == SV.VolatileBomb and not debuff[SV.ShrapnelBomb].up or
-		azerite[A.LatentPoison] > 0 or
-		azerite[A.VenomousFangs] > 0 or
-		buff[SV.MongooseFury].count == 5
-	))
-	then
-		return SV.SerpentSting;
-	end
-
-	-- harpoon,if=talent.terms_of_engagement.enabled|azerite.up_close_and_personal.enabled;
-	if cooldown[SV.Harpoon].ready and (talents[SV.TermsOfEngagement] or azerite[A.UpCloseAndPersonal] > 0) then
-		return SV.Harpoon;
-	end
-
-	-- mongoose_bite,if=buff.mongoose_fury.up|focus>60|dot.shrapnel_bomb.ticking;
-	if talents[SV.MongooseBite] and (buff[SV.MongooseFury].up or focus > 60 or debuff[SV.ShrapnelBomb].up) then
-		return MongooseBite;
-	end
-
-	-- raptor_strike;
-	if not talents[SV.MongooseBite] and focus >= 30 then
-		return RaptorStrike;
-	end
-
-	-- serpent_sting,if=refreshable;
-	if focus >= 20 and debuff[SV.SerpentSting].refreshable then
-		return SV.SerpentSting;
-	end
-
-	-- wildfire_bomb,if=next_wi_bomb.volatile&dot.serpent_sting.ticking|next_wi_bomb.pheromone|next_wi_bomb.shrapnel&focus>50;
-	if cooldown[SV.WildfireBomb].ready and
-		(
-			nextWiBomb == SV.VolatileBomb and debuff[SV.SerpentSting].up or
-			nextWiBomb == SV.PheromoneBomb or
-			nextWiBomb == SV.ShrapnelBomb and focus > 50
-		)
-	then
-		return BombSpell;
-	end
-end

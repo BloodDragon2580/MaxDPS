@@ -1,432 +1,470 @@
 local _, addonTable = ...;
 
---- @type MaxDps
-if not MaxDps then
-	return
-end
-
-local MaxDps = MaxDps;
+-- @type MaxDps;
+if not MaxDps then return end;
 local Rogue = addonTable.Rogue;
+local MaxDps = MaxDps;
+
+local UnitPower = UnitPower;
+local UnitPowerMax = UnitPowerMax;
+
+local itemID = GetInventoryItemID('player', INVSLOT_MAINHAND);
+
+local mainHandSubClassID = itemID and  select(13, GetItemInfo(itemID));
+
+local TwoHanderWepCheck = mainHandSubClassID and (mainHandSubClassID == 1 or mainHandSubClassID == 5 or mainHandSubClassID == 8 or mainHandSubClassID == 10);
 
 local OL = {
-	AdrenalineRush = 13750,
-	Ambush = 8676,
-	Audacity = 381845,
-	BetweenTheEyes = 315341,
-	BladeFlurry = 13877,
-	BladeRush = 271877,
-	Broadside = 193356,
-	BuriedTreasure = 199600,
-	ColdBlood = 382245,
-	CountTheOdds = 381982,
-	Dispatch = 2098,
-	Dreadblades = 343142,
-	EchoingReprimand = 385616,
-	FanTheHammer = 381846,
-	GhostlyStrike = 196937,
-	GrandMelee = 193358,
-	GreenskinsWickers = 386823,
-	ImprovedAdrenalineRush = 395422,
-	KeepItRolling = 381989,
-	KillingSpree = 51690,
 	MarkedForDeath = 137619,
-	MasterAssassinBuff = 256735,
-	Opportunity = 195627,
-	PistolShot = 185763,
-	QuickDraw = 196938,
+	AdrenalineRush = 13750,
 	RollTheBones = 315508,
-	RuthlessPrecision = 193357,
-	Sepsis = 385408,
-	SepsisBuff = 347037,
-	SerratedBoneSpike = 385424,
-	SerratedBoneSpikeDot = 394036,
-	ShadowBlades = 121471,
-	ShadowDance = 185313,
-	Shiv = 5938,
-	SinisterStrike = 193315,
-	SkullAndCrossbones = 199603,
 	SliceAndDice = 315496,
 	Stealth = 1784,
-	SwiftSlasher = 381988,
-	TakeEmBySurprise = 382742,
-	ThistleTea = 381623,
-	TinyToxicBlade = 381800,
+	Kick = 1766,
+	CountTheOdds = 381982,
+	ShadowDance = 185313,
+	HiddenOpportunity = 383281,
+	Broadside = 193356,
+	FanTheHammer = 381846,
+	SkullAndCrossbones = 199603,
 	TrueBearing = 193359,
+	LoadedDice = 256170,
+	BuriedTreasure = 199600,
+	GrandMelee = 193358,
+	KeepItRolling = 381989,
+	RuthlessPrecision = 193357,
+	Subterfuge = 108208,
+	ImprovedAmbush = 381620,
+	SummarilyDispatched = 381990,
+	BladeFlurry = 13877,
+	KillingSpree = 51690,
+	Sepsis = 385408,
+	BetweenTheEyes = 315341,
+	GhostlyStrike = 196937,
+	Dreadblades = 343142,
+	Ambush = 8676,
+	Audacity = 381845,
+	FindWeakness = 91023,
+	PistolShot = 185763,
+	Opportunity = 279876,
+	GreenskinsWickers = 386823,
+	QuickDraw = 196938,
+	EchoingReprimand = 385616,
+	Weaponmaster = 200733,
+	SinisterStrike = 193315,
+	ImprovedAdrenalineRush = 395422,
+	BladeRush = 271877,
+	ThistleTea = 381623,
+	ImprovedBetweenTheEyes = 235484,
+	SwiftSlasher = 381988,
+	ColdBlood = 382245,
+	Dispatch = 2098,
 	Vanish = 1856,
-	ViciousWound = 115774,
-	Weaponmaster = 200733
 };
-
-setmetatable(OL, Rogue.spellMeta);
-
-local echoingReprimand = {
-	auras = {
-		{
-			id = 323558,
-			cp = 2
-		},
-		{
-			id = 323559,
-			cp = 3
-		},
-		{
-			id = 323560,
-			cp = 4
-		},
-		{
-			id = 354835,
-			cp = 5
-		}
-	}
+local A = {
 };
-
-echoingReprimand.up = function(comboPoints)
-	local buff = MaxDps.FrameData.buff
-
-	for i in pairs(echoingReprimand.auras) do
-		local aura = echoingReprimand.auras[i];
-		if buff[aura.id].up and aura.cp == comboPoints then
-			return aura
-		end
-	end
-
-	return false
-end
-
-local function calculateEffectiveComboPoints(comboPoints)
-	if comboPoints > 1 and comboPoints < 6 then
-		local aura = echoingReprimand.up(comboPoints)
-		if aura then
-			return MaxDps.FrameData.cpMaxSpend
-		end
-	end
-
-	return comboPoints
-end
-
-local function calculateRtbBuffCount()
-	local buff = MaxDps.FrameData.buff
-
-	local rollTheBonesBuffCount = 0;
-	if buff[OL.SkullAndCrossbones].up then rollTheBonesBuffCount = rollTheBonesBuffCount + 1; end
-	if buff[OL.TrueBearing].up        then rollTheBonesBuffCount = rollTheBonesBuffCount + 1; end
-	if buff[OL.RuthlessPrecision].up  then rollTheBonesBuffCount = rollTheBonesBuffCount + 1; end
-	if buff[OL.GrandMelee].up         then rollTheBonesBuffCount = rollTheBonesBuffCount + 1; end
-	if buff[OL.BuriedTreasure].up     then rollTheBonesBuffCount = rollTheBonesBuffCount + 1; end
-	if buff[OL.Broadside].up          then rollTheBonesBuffCount = rollTheBonesBuffCount + 1; end
-
-	return rollTheBonesBuffCount
-end
-
 function Rogue:Outlaw()
-	local fd = MaxDps.FrameData
-	local cooldown = fd.cooldown
-	local buff = fd.buff
-	local talents = fd.talents
-	local targets = MaxDps:SmartAoe()
-	fd.targets = targets
-	local comboPoints = UnitPower('player', Enum.PowerType.ComboPoints)
-	fd.comboPoints = comboPoints
-	local cpMaxSpend = UnitPowerMax('player', Enum.PowerType.ComboPoints)
-	fd.cpMaxSpend = cpMaxSpend
-	local comboPointsDeficit = cpMaxSpend - comboPoints
-	fd.comboPointsDeficit = comboPointsDeficit
-	local energy = UnitPower('player', Enum.PowerType.Energy)
-	fd.energy = energy
+	local fd = MaxDps.FrameData;
+	local timeTo35 = fd.timeToDie;
+	local timeTo20 = fd.timeToDie;
+	local targetHp = MaxDps:TargetPercentHealth() * 100;
+	local cooldown = fd.cooldown;
+	local buff = fd.buff;
+	local talents = fd.talents;
+	local targets = fd.targets and fd.targets or 1;
+	local timeToDie = fd.timeToDie;
+	local comboPoints = UnitPower('player', Enum.PowerType.ComboPoints);
+	local comboPointsMax = UnitPowerMax('player', Enum.PowerType.ComboPoints);
+	local comboPointsPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local comboPointsRegen = select(2,GetPowerRegen());
+	local comboPointsRegenCombined = comboPointsRegen + comboPoints;
+	local comboPointsDeficit = UnitPowerMax('player', Enum.PowerType.ComboPoints) - comboPoints;
+	local comboPointsTimeToMax = comboPointsMax - comboPoints / comboPointsRegen;
+	local energy = UnitPower('player', Enum.PowerType.Energy);
 	local energyMax = UnitPowerMax('player', Enum.PowerType.Energy);
-	local energyRegen = GetPowerRegen();
-	fd.energyDeficit = energyMax - energy
-	fd.energyRegen = energyRegen
-	fd.energyTimeToMax = (energyMax - energy) / energyRegen
-	local effectiveComboPoints = calculateEffectiveComboPoints(comboPoints);
-	local rtbBuffCount = calculateRtbBuffCount()
-	local stealthed = IsStealthed()
+	local energyPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local energyRegen = select(2,GetPowerRegen());
+	local energyRegenCombined = energyRegen + energy;
+	local energyDeficit = UnitPowerMax('player', Enum.PowerType.Energy) - energy;
+	local energyTimeToMax = energyMax - energy / energyRegen;
 
-	-- variable,name=rtb_reroll,value=rtb_buffs<2&(!buff.broadside.up&(!runeforge.concealed_blunderbuss&!talent.fan_the_hammer|!buff.skull_and_crossbones.up)&(!runeforge.invigorating_shadowdust|!buff.true_bearing.up))|rtb_buffs=2&buff.buried_treasure.up&buff.grand_melee.up
-	local rtbReroll = rtbBuffCount < 2 and ( not buff[OL.Broadside].up and ( not talents[OL.FanTheHammer] or not buff[OL.SkullAndCrossbones].up ) and not buff[OL.TrueBearing].up ) or rtbBuffCount == 2 and buff[OL.BuriedTreasure].up and buff[OL.GrandMelee].up
-	fd.rtbReroll = rtbReroll
-
-	-- variable,name=ambush_condition,value=combo_points.deficit>=2+buff.broadside.up&energy>=50&(!conduit.count_the_odds&!talent.count_the_odds|buff.roll_the_bones.remains>=10)
-	local ambushCondition = comboPointsDeficit >= 2 and buff[OL.Broadside].up and energy >= 50 and ( not talents[OL.CountTheOdds] or (not talents[OL.RollTheBones] or cooldown[OL.RollTheBones].remains >= 10) )
-	fd.ambushCondition = ambushCondition
-
-	-- variable,name=finish_condition,value=combo_points>=cp_max_spend-buff.broadside.up-(buff.opportunity.up*(talent.quick_draw|talent.fan_the_hammer)|buff.concealed_blunderbuss.up)|effective_combo_points>=cp_max_spend
-	local finishCondition = (
-			(comboPoints >= cpMaxSpend and 1 or 0)
-			- (buff[OL.Broadside].up and 1 or 0)
-			- ((( buff[OL.Opportunity].up and ( talents[OL.QuickDraw] or talents[OL.FanTheHammer] ) )) and 1 or 0)
-			) > 0
-			or effectiveComboPoints >= cpMaxSpend
-	fd.finishCondition = finishCondition
-
-	-- variable,name=finish_condition,op=reset,if=cooldown.between_the_eyes.ready&effective_combo_points<5
-	if cooldown[OL.BetweenTheEyes].ready and effectiveComboPoints < 5 then
-		finishCondition = false
+	-- stealth;
+	if cooldown[OL.Stealth].ready then
+		return OL.Stealth;
 	end
 
-	-- variable,name=blade_flurry_sync,value=spell_targets.blade_flurry<2&raid_event.adds.in>20|buff.blade_flurry.remains>1+talent.killing_spree.enabled
-	local bladeFlurrySync = targets < 2 and buff[OL.BladeFlurry].remains > (1 + (talents[OL.KillingSpree] and 1 or 0))
-	fd.bladeFlurrySync = bladeFlurrySync
+	-- variable,name=stealthed_cto,value=talent.count_the_odds&(stealthed.basic|buff.shadowmeld.up|buff.shadow_dance.up);
+	local stealthedCto = talents[OL.CountTheOdds] and ( stealthedBasic or buff[OL.Shadowmeld].up or buff[OL.ShadowDance].up );
 
-	-- run_action_list,name=stealth,if=stealthed.all
-	if stealthed then
-		return Rogue:OutlawStealth()
+	-- variable,name=rtb_reroll,if=!talent.hidden_opportunity,value=rtb_buffs<2&(!buff.broadside.up&(!talent.fan_the_hammer|!buff.skull_and_crossbones.up)&!buff.true_bearing.up|buff.loaded_dice.up)|rtb_buffs=2&(buff.buried_treasure.up&buff.grand_melee.up|!buff.broadside.up&!buff.true_bearing.up&buff.loaded_dice.up);
+	if not talents[OL.HiddenOpportunity] then
+		local rtbReroll = WTFFFFFF;
 	end
 
-	-- call_action_list,name=cds
-	local result = Rogue:OutlawCds()
+	-- variable,name=rtb_reroll,if=!talent.hidden_opportunity&(talent.keep_it_rolling|talent.count_the_odds),value=variable.rtb_reroll|((rtb_buffs.normal=0&rtb_buffs.longer>=1)&!(buff.broadside.up&buff.true_bearing.up&buff.skull_and_crossbones.up)&!(buff.broadside.remains>39|buff.true_bearing.remains>39|buff.ruthless_precision.remains>39|buff.skull_and_crossbones.remains>39));
+	if not talents[OL.HiddenOpportunity] and ( talents[OL.KeepItRolling] or talents[OL.CountTheOdds] ) then
+		local rtbReroll = WTFFFFFF;
+	end
+
+	-- variable,name=rtb_reroll,if=talent.hidden_opportunity,value=!rtb_buffs.will_lose.skull_and_crossbones&rtb_buffs.will_lose<2&buff.shadow_dance.down&buff.subterfuge.down;
+	if talents[OL.HiddenOpportunity] then
+		local rtbReroll = WTFFFFFF;
+	end
+
+	-- variable,name=rtb_reroll,op=reset,if=!(raid_event.adds.remains>12|raid_event.adds.up&(raid_event.adds.in-raid_event.adds.remains)<6|target.time_to_die>12)|fight_remains<12;
+	if targets > 1 or timeToDie < 12 then
+		local rtbReroll = 0;
+	end
+
+	-- variable,name=ambush_condition,value=(talent.hidden_opportunity|combo_points.deficit>=2+talent.improved_ambush+buff.broadside.up|buff.vicious_followup.up)&energy>=50;
+	local ambushCondition = ( talents[OL.HiddenOpportunity] or comboPointsDeficit >= 2 + (talents[OL.ImprovedAmbush] and 1 or 0) + buff[OL.Broadside].up or buff[OL.ViciousFollowup].up ) and energy >= 50;
+
+	-- variable,name=finish_condition,value=combo_points>=((cp_max_spend-1)<?(6-talent.summarily_dispatched))|effective_combo_points>=cp_max_spend;
+	local finishCondition = comboPoints >= ( ( cpMaxSpend - 1 ) <= ( 6 - (talents[OL.SummarilyDispatched] and 1 or 0) ) ) or comboPoints >= cpMaxSpend;
+
+	-- variable,name=blade_flurry_sync,value=spell_targets.blade_flurry<2&raid_event.adds.in>20|buff.blade_flurry.remains>1+talent.killing_spree.enabled;
+	local bladeFlurrySync = targets < 2 or buff[OL.BladeFlurry].remains > 1 + talents[OL.KillingSpree];
+
+	-- call_action_list,name=stealth,if=stealthed.basic|buff.shadowmeld.up;
+	if stealthedBasic or buff[OL.Shadowmeld].up then
+		local result = Rogue:OutlawStealth();
+		if result then
+			return result;
+		end
+	end
+
+	-- call_action_list,name=cds;
+	local result = Rogue:OutlawCds();
 	if result then
-		return result
+		return result;
 	end
 
-	-- run_action_list,name=finish,if=variable.finish_condition
+	-- call_action_list,name=stealth,if=variable.stealthed_cto;
+	if stealthedCto then
+		local result = Rogue:OutlawStealth();
+		if result then
+			return result;
+		end
+	end
+
+	-- run_action_list,name=finish,if=variable.finish_condition;
 	if finishCondition then
-		return Rogue:OutlawFinish()
+		return Rogue:OutlawFinish();
 	end
 
-	-- call_action_list,name=build
-	result = Rogue:OutlawBuild()
+	-- call_action_list,name=build;
+	local result = Rogue:OutlawBuild();
 	if result then
-		return result
+		return result;
 	end
-
-	return OL.SinisterStrike
 end
-
-local function calccCpGain(baseCp)
-	local buff = MaxDps.FrameData.buff
-	local debuff = MaxDps.FrameData.debuff
-	return debuff[OL.Dreadblades].up and MaxDps.FrameData.cpMaxSpend or ( baseCp + ( buff[OL.ShadowBlades].up and 1 or 0 ) + ( buff[OL.Broadside].up and 2 or 1 ) + ( buff[OL.Opportunity].up and 1 or 0 ) )
-end
-
 function Rogue:OutlawBuild()
-	local fd = MaxDps.FrameData
-	local cooldown = fd.cooldown
-	local buff = fd.buff
-	local debuff = fd.debuff
-	local talents = fd.talents
-	local timeToDie = fd.timeToDie
-	local energy = fd.energy
-	local comboPointsDeficit = fd.comboPointsDeficit
-	local bladeFlurrySync = fd.bladeFlurrySync
-	local energyTimeToMax = fd.energyTimeToMax
-	local energyDeficit = fd.energyDeficit
-	local energyRegen = fd.energyRegen
-	local stealthed = fd.stealthed
+	local fd = MaxDps.FrameData;
+	local timeTo35 = fd.timeToDie;
+	local timeTo20 = fd.timeToDie;
+	local targetHp = MaxDps:TargetPercentHealth() * 100;
+	local cooldown = fd.cooldown;
+	local buff = fd.buff;
+	local debuff = fd.debuff;
+	local talents = fd.talents;
+	local targets = fd.targets and fd.targets or 1;
+	local timeToDie = fd.timeToDie;
+	local energy = UnitPower('player', Enum.PowerType.Energy);
+	local energyMax = UnitPowerMax('player', Enum.PowerType.Energy);
+	local energyPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local energyRegen = select(2,GetPowerRegen());
+	local energyRegenCombined = energyRegen + energy;
+	local energyDeficit = UnitPowerMax('player', Enum.PowerType.Energy) - energy;
+	local energyTimeToMax = energyMax - energy / energyRegen;
+	local comboPoints = UnitPower('player', Enum.PowerType.ComboPoints);
+	local comboPointsMax = UnitPowerMax('player', Enum.PowerType.ComboPoints);
+	local comboPointsPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local comboPointsRegen = select(2,GetPowerRegen());
+	local comboPointsRegenCombined = comboPointsRegen + comboPoints;
+	local comboPointsDeficit = UnitPowerMax('player', Enum.PowerType.ComboPoints) - comboPoints;
+	local comboPointsTimeToMax = comboPointsMax - comboPoints / comboPointsRegen;
 
-	-- sepsis,target_if=max:target.time_to_die*debuff.between_the_eyes.up,if=target.time_to_die>11&debuff.between_the_eyes.up|fight_remains<11
+	-- sepsis,target_if=max:target.time_to_die*debuff.between_the_eyes.up,if=target.time_to_die>11&debuff.between_the_eyes.up|fight_remains<11;
 	if talents[OL.Sepsis] and cooldown[OL.Sepsis].ready and energy >= 25 and (timeToDie > 11 and debuff[OL.BetweenTheEyes].up or timeToDie < 11) then
-		return OL.Sepsis
+		return OL.Sepsis;
 	end
 
-	-- ghostly_strike,if=debuff.ghostly_strike.remains<=3
-	if talents[OL.GhostlyStrike] and cooldown[OL.GhostlyStrike].ready and energy >= 30 and (debuff[OL.GhostlyStrike].remains <= 3) then
-		return OL.GhostlyStrike
+	-- ghostly_strike,if=debuff.ghostly_strike.remains<=3&(spell_targets.blade_flurry<=2|buff.dreadblades.up)&!buff.subterfuge.up&target.time_to_die>=5;
+	if talents[OL.GhostlyStrike] and cooldown[OL.GhostlyStrike].ready and energy >= 30 and (debuff[OL.GhostlyStrike].remains <= 3 and ( targets <= 2 or buff[OL.Dreadblades].up ) and not buff[OL.Subterfuge].up and timeToDie >= 5) then
+		return OL.GhostlyStrike;
 	end
 
-	-- shiv,if=runeforge.tiny_toxic_blade
-	if cooldown[OL.Shiv].ready and energy >= 20 and talents[OL.TinyToxicBlade] then
-		return OL.Shiv
+	-- ambush,if=talent.keep_it_rolling&((buff.audacity.up|buff.sepsis_buff.up)&talent.find_weakness&debuff.find_weakness.remains<2|buff.subterfuge.up&cooldown.keep_it_rolling.ready);
+	if energy >= 50 and (talents[OL.KeepItRolling] and ( ( buff[OL.Audacity].up or buff[OL.SepsisBuff].up ) and talents[OL.FindWeakness] and debuff[OL.FindWeakness].remains < 2 or buff[OL.Subterfuge].up and cooldown[OL.KeepItRolling].ready )) then
+		return OL.Ambush;
 	end
 
-	-- echoing_reprimand,if=!soulbind.effusive_anima_accelerator|variable.blade_flurry_sync
-	if talents[OL.EchoingReprimand] and cooldown[OL.EchoingReprimand].ready and energy >= 10 and not bladeFlurrySync then
-		return OL.EchoingReprimand
+	-- ambush,if=talent.hidden_opportunity&(buff.audacity.up|buff.sepsis_buff.up);
+	if energy >= 50 and (talents[OL.HiddenOpportunity] and ( buff[OL.Audacity].up or buff[OL.SepsisBuff].up )) then
+		return OL.Ambush;
 	end
 
-	-- ambush
-	if energy >= 50 and buff[OL.SepsisBuff].up then
-		return OL.Ambush
+	-- pistol_shot,if=talent.fan_the_hammer&talent.audacity&talent.hidden_opportunity&buff.opportunity.up&!buff.audacity.up&!buff.subterfuge.up&!buff.shadow_dance.up;
+	if energy >= 40 and (talents[OL.FanTheHammer] and talents[OL.Audacity] and talents[OL.HiddenOpportunity] and buff[OL.Opportunity].up and not buff[OL.Audacity].up and not buff[OL.Subterfuge].up and not buff[OL.ShadowDance].up) then
+		return OL.PistolShot;
 	end
 
-	-- cold_blood,if=buff.opportunity.up&buff.greenskins_wickers.up|buff.greenskins_wickers.up&buff.greenskins_wickers.remains<1.5
-	if talents[OL.ColdBlood] and cooldown[OL.ColdBlood].ready and (buff[OL.Opportunity].up and buff[OL.GreenskinsWickers].up or buff[OL.GreenskinsWickers].up and buff[OL.GreenskinsWickers].remains < 1.5) then
-		return OL.ColdBlood
+	-- pistol_shot,if=buff.greenskins_wickers.up&(!talent.fan_the_hammer&buff.opportunity.up|buff.greenskins_wickers.remains<1.5);
+	if energy >= 40 and (buff[OL.GreenskinsWickers].up and ( not talents[OL.FanTheHammer] and buff[OL.Opportunity].up or buff[OL.GreenskinsWickers].remains < 1.5 )) then
+		return OL.PistolShot;
 	end
 
-	-- pistol_shot,if=buff.opportunity.up&(buff.greenskins_wickers.up&!talent.fan_the_hammer|buff.concealed_blunderbuss.up)|buff.greenskins_wickers.up&buff.greenskins_wickers.remains<1.5
-	if energy >= 40 and (buff[OL.Opportunity].up and ( buff[OL.GreenskinsWickers].up and not talents[OL.FanTheHammer] ) or buff[OL.GreenskinsWickers].up and buff[OL.GreenskinsWickers].remains < 1.5) then
-		return OL.PistolShot
+	-- pistol_shot,if=talent.fan_the_hammer&buff.opportunity.up&(buff.opportunity.stack>=buff.opportunity.max_stack|buff.opportunity.remains<2);
+	if energy >= 40 and (talents[OL.FanTheHammer] and buff[OL.Opportunity].up and ( buff[OL.Opportunity].count >= buff[OL.Opportunity].maxStacks or buff[OL.Opportunity].remains < 2 )) then
+		return OL.PistolShot;
 	end
 
-	local opportunityMaxCharges = 1 + (talents[OL.FanTheHammer] and 5 or 0)
-
-	-- pistol_shot,if=talent.fan_the_hammer&buff.opportunity.up&(buff.opportunity.stack>=buff.opportunity.max_stack|buff.opportunity.remains<2)
-	if energy >= 40 and (talents[OL.FanTheHammer] and buff[OL.Opportunity].up and ( buff[OL.Opportunity].count >= opportunityMaxCharges or buff[OL.Opportunity].remains < 2 )) then
-		return OL.PistolShot
+	-- pistol_shot,if=talent.fan_the_hammer&buff.opportunity.up&combo_points.deficit>((1+talent.quick_draw)*talent.fan_the_hammer.rank)&!buff.dreadblades.up&(!talent.hidden_opportunity|!buff.subterfuge.up&!buff.shadow_dance.up);
+	if energy >= 40 and (talents[OL.FanTheHammer] and buff[OL.Opportunity].up and comboPointsDeficit > ( ( 1 + (talents[OL.QuickDraw] and 1 or 0) ) * (talents[OL.FanTheHammer] and 1 or 0) ) and not buff[OL.Dreadblades].up and ( not talents[OL.HiddenOpportunity] or not buff[OL.Subterfuge].up and not buff[OL.ShadowDance].up )) then
+		return OL.PistolShot;
 	end
 
-	-- pistol_shot,if=talent.fan_the_hammer&buff.opportunity.up&combo_points.deficit>4&!buff.dreadblades.up
-	if energy >= 40 and (talents[OL.FanTheHammer] and buff[OL.Opportunity].up and comboPointsDeficit > 4 and not buff[OL.Dreadblades].up) then
-		return OL.PistolShot
+	-- echoing_reprimand;
+	if talents[OL.EchoingReprimand] and cooldown[OL.EchoingReprimand].ready and energy >= 10 then
+		return OL.EchoingReprimand;
 	end
 
-	-- serrated_bone_spike,if=!dot.serrated_bone_spike_dot.ticking
-	if talents[OL.SerratedBoneSpike] and cooldown[OL.SerratedBoneSpike].ready and energy >= 15 and (not debuff[OL.SerratedBoneSpikeDot].up) then
-		return OL.SerratedBoneSpike
+	-- ambush,if=talent.hidden_opportunity|talent.find_weakness&debuff.find_weakness.down;
+	if energy >= 50 and (talents[OL.HiddenOpportunity] or talents[OL.FindWeakness] and not debuff[OL.FindWeakness].up) then
+		return OL.Ambush;
 	end
 
-	-- serrated_bone_spike,if=fight_remains<=5|cooldown.serrated_bone_spike.max_charges-charges_fractional<=0.25|combo_points.deficit=cp_gain&!buff.skull_and_crossbones.up&energy.base_time_to_max>1
-	if talents[OL.SerratedBoneSpike] and cooldown[OL.SerratedBoneSpike].ready and energy >= 15 and (timeToDie <= 5 or cooldown[OL.SerratedBoneSpike].maxCharges - cooldown[OL.SerratedBoneSpike].charges <= 0.25 or comboPointsDeficit == calccCpGain(1) and not buff[OL.SkullAndCrossbones].up and energyTimeToMax > 1) then
-		return OL.SerratedBoneSpike
+	-- pistol_shot,if=!talent.fan_the_hammer&buff.opportunity.up&(energy.base_deficit>energy.regen*1.5|!talent.weaponmaster&combo_points.deficit<=1+buff.broadside.up|talent.quick_draw.enabled|talent.audacity.enabled&!buff.audacity.up);
+	if energy >= 40 and (not talents[OL.FanTheHammer] and buff[OL.Opportunity].up and ( energyBaseDeficit > energyRegen * 1.5 or not talents[OL.Weaponmaster] and comboPointsDeficit <= 1 + buff[OL.Broadside].up or talents[OL.QuickDraw] or talents[OL.Audacity] and not buff[OL.Audacity].up )) then
+		return OL.PistolShot;
 	end
 
-	-- pistol_shot,if=!talent.fan_the_hammer&buff.opportunity.up&(energy.base_deficit>energy.regen*1.5|!talent.weaponmaster&combo_points.deficit<=1+buff.broadside.up|talent.quick_draw.enabled|talent.audacity.enabled&!buff.audacity.up)
-	if energy >= 40 and (
-			not talents[OL.FanTheHammer] 
-					and buff[OL.Opportunity].up 
-					and ( 
-						energyDeficit > energyRegen * 1.5 
-								or not talents[OL.Weaponmaster] 
-								and comboPointsDeficit <= 1 + (buff[OL.Broadside].up 
-								or talents[OL.QuickDraw] 
-								or talents[OL.Audacity] 
-								and not buff[OL.Audacity].up) and 1 or 0
-					)
-	)
-	then
-		return OL.PistolShot
-	end
-
-	-- sinister_strike
+	-- sinister_strike;
 	if energy >= 45 then
-		return OL.SinisterStrike
+		return OL.SinisterStrike;
 	end
 end
 
 function Rogue:OutlawCds()
-	local fd = MaxDps.FrameData
-	local cooldown = fd.cooldown
-	local buff = fd.buff
-	local debuff = fd.debuff
-	local talents = fd.talents
-	local targets = fd.targets
-	local timeToDie = fd.timeToDie
-	local energy = fd.energy
-	local comboPoints = fd.comboPoints
-	local comboPointsDeficit = fd.comboPointsDeficit
-	local finishCondition = fd.finishCondition
-	local rtbReroll = fd.rtbReroll
-	local stealthed = fd.stealthed
-	local ambushCondition = fd.ambushCondition
-	local cpMaxSpend = fd.cpMaxSpend
-	local bladeFlurrySync = fd.bladeFlurrySync
-	local energyDeficit = fd.energyDeficit
-	local energyRegen = fd.energyRegen
-	local energyTimeToMax = fd.energyTimeToMax
+	local fd = MaxDps.FrameData;
+	local timeTo35 = fd.timeToDie;
+	local timeTo20 = fd.timeToDie;
+	local targetHp = MaxDps:TargetPercentHealth() * 100;
+	local cooldown = fd.cooldown;
+	local buff = fd.buff;
+	local debuff = fd.debuff;
+	local talents = fd.talents;
+	local targets = fd.targets and fd.targets or 1;
+	local gcd = fd.gcd;
+	local timeToDie = fd.timeToDie;
+	local comboPoints = UnitPower('player', Enum.PowerType.ComboPoints);
+	local comboPointsMax = UnitPowerMax('player', Enum.PowerType.ComboPoints);
+	local comboPointsPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local comboPointsRegen = select(2,GetPowerRegen());
+	local comboPointsRegenCombined = comboPointsRegen + comboPoints;
+	local comboPointsDeficit = UnitPowerMax('player', Enum.PowerType.ComboPoints) - comboPoints;
+	local comboPointsTimeToMax = comboPointsMax - comboPoints / comboPointsRegen;
+	local energy = UnitPower('player', Enum.PowerType.Energy);
+	local energyMax = UnitPowerMax('player', Enum.PowerType.Energy);
+	local energyPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local energyRegen = select(2,GetPowerRegen());
+	local energyRegenCombined = energyRegen + energy;
+	local energyDeficit = UnitPowerMax('player', Enum.PowerType.Energy) - energy;
+	local energyTimeToMax = energyMax - energy / energyRegen;
 
-	-- blade_flurry,if=spell_targets>=2&!buff.blade_flurry.up
-	if talents[OL.BladeFlurry] and cooldown[OL.BladeFlurry].ready and energy >= 15 and (targets >= 2 and not buff[OL.BladeFlurry].up) then
-		return OL.BladeFlurry
-	end
-	local masterAssassinRemains = buff[OL.MasterAssassinBuff].remains
-
-	-- roll_the_bones,if=master_assassin_remains=0&buff.dreadblades.down&(!buff.roll_the_bones.up|variable.rtb_reroll)
-	if talents[OL.RollTheBones] and cooldown[OL.RollTheBones].ready and energy >= 25 and (masterAssassinRemains == 0 and not buff[OL.Dreadblades].up and rtbReroll ) then
-		return OL.RollTheBones
-	end
-
-	-- keep_it_rolling,if=!variable.rtb_reroll&(buff.broadside.up+buff.true_bearing.up+buff.skull_and_crossbones.up+buff.ruthless_precision.up)>2
-	if talents[OL.KeepItRolling] and cooldown[OL.KeepItRolling].ready and (not rtbReroll and ( (buff[OL.Broadside].up and 1 or 0) + (buff[OL.TrueBearing].up and 1 or 0) + (buff[OL.SkullAndCrossbones].up and 1 or 0) + (buff[OL.RuthlessPrecision].up and 1 or 0) ) > 2) then
-		return OL.KeepItRolling
-	end
-
-	-- shadow_dance,if=!runeforge.mark_of_the_master_assassin&!runeforge.invigorating_shadowdust&!runeforge.deathly_shadows&!stealthed.all&!buff.take_em_by_surprise.up&(variable.finish_condition&buff.slice_and_dice.up|variable.ambush_condition&!buff.slice_and_dice.up)
-	if talents[OL.ShadowDance] and cooldown[OL.ShadowDance].ready and (not stealthed and not buff[OL.TakeEmBySurprise].up and ( finishCondition and buff[OL.SliceAndDice].up or ambushCondition and not buff[OL.SliceAndDice].up )) then
-		return OL.ShadowDance
-	end
-
-	-- vanish,if=!runeforge.mark_of_the_master_assassin&!runeforge.invigorating_shadowdust&!runeforge.deathly_shadows&!stealthed.all&!buff.take_em_by_surprise.up&(variable.finish_condition&buff.slice_and_dice.up|variable.ambush_condition&!buff.slice_and_dice.up)
-	--if cooldown[OL.Vanish].ready and (not stealthed and not buff[OL.TakeEmBySurprise].up and ( finishCondition and buff[OL.SliceAndDice].up or ambushCondition and not buff[OL.SliceAndDice].up )) then
-	--	return OL.Vanish
-	--end
-	
-	-- adrenaline_rush,if=!buff.adrenaline_rush.up&(!talent.improved_adrenaline_rush|combo_points<=2)
+	-- adrenaline_rush,if=!buff.adrenaline_rush.up&(!talent.improved_adrenaline_rush|combo_points<=2);
 	if talents[OL.AdrenalineRush] and cooldown[OL.AdrenalineRush].ready and (not buff[OL.AdrenalineRush].up and ( not talents[OL.ImprovedAdrenalineRush] or comboPoints <= 2 )) then
-		return OL.AdrenalineRush
+		return OL.AdrenalineRush;
 	end
 
-	-- dreadblades,if=!stealthed.all&combo_points<=2&(!covenant.venthyr|buff.flagellation_buff.up)&(!talent.marked_for_death|!cooldown.marked_for_death.ready)
-	if talents[OL.Dreadblades] and cooldown[OL.Dreadblades].ready and energy >= 50 and (not stealthed and comboPoints <= 2 and ( not talents[OL.MarkedForDeath] or not cooldown[OL.MarkedForDeath].ready )) then
-		return OL.Dreadblades
+	-- blade_flurry,if=(spell_targets>=2|((buff.grand_melee.up&talent.hidden_opportunity)|(buff.grand_melee.remains>10))&!stealthed.rogue&!buff.dreadblades.up)&buff.blade_flurry.remains<gcd;
+	if talents[OL.BladeFlurry] and cooldown[OL.BladeFlurry].ready and energy >= 15 and (( targets >= 2 or ( ( buff[OL.GrandMelee].up and talents[OL.HiddenOpportunity] ) or ( buff[OL.GrandMelee].remains > 10 ) ) and not stealthedRogue and not buff[OL.Dreadblades].up ) and buff[OL.BladeFlurry].remains < gcd) then
+		return OL.BladeFlurry;
 	end
 
-	-- marked_for_death,line_cd=1.5,target_if=min:target.time_to_die,if=raid_event.adds.up&(target.time_to_die<combo_points.deficit|!stealthed.rogue&combo_points.deficit>=cp_max_spend-1)
-	if talents[OL.MarkedForDeath] and cooldown[OL.MarkedForDeath].ready and (( timeToDie < comboPointsDeficit or not stealthed and comboPointsDeficit >= cpMaxSpend - 1 )) then
-		return OL.MarkedForDeath
+	-- roll_the_bones,if=buff.dreadblades.down&(rtb_buffs.total=0|variable.rtb_reroll);
+	if talents[OL.RollTheBones] and cooldown[OL.RollTheBones].ready and energy >= 25 and (not buff[OL.Dreadblades].up and ( rtbBuffsTotal == 0 or rtbReroll )) then
+		return OL.RollTheBones;
 	end
 
-	-- marked_for_death,if=raid_event.adds.in>30-raid_event.adds.duration&!stealthed.rogue&combo_points.deficit>=cp_max_spend-1&(!covenant.venthyr|cooldown.flagellation.remains>10|buff.flagellation_buff.up)
-	if talents[OL.MarkedForDeath] and cooldown[OL.MarkedForDeath].ready and (not stealthed and comboPointsDeficit >= cpMaxSpend - 1) then
-		return OL.MarkedForDeath
+	-- keep_it_rolling,if=!variable.rtb_reroll&(buff.broadside.up+buff.true_bearing.up+buff.skull_and_crossbones.up+buff.ruthless_precision.up+buff.grand_melee.up)>2&(buff.shadow_dance.down|rtb_buffs>=6);
+	if talents[OL.KeepItRolling] and cooldown[OL.KeepItRolling].ready and (not rtbReroll and ( buff[OL.Broadside].up + buff[OL.TrueBearing].up + buff[OL.SkullAndCrossbones].up + buff[OL.RuthlessPrecision].up + buff[OL.GrandMelee].up ) > 2 and ( not buff[OL.ShadowDance].up or rtbBuffs >= 6 )) then
+		return OL.KeepItRolling;
 	end
 
-	if talents[OL.KillingSpree] then
-		-- variable,name=killing_spree_vanish_sync,value=!runeforge.mark_of_the_master_assassin|cooldown.vanish.remains>10|master_assassin_remains>2
-		local killingSpreeVanishSync = cooldown[OL.Vanish].remains > 10 or masterAssassinRemains > 2
+	-- blade_rush,if=variable.blade_flurry_sync&!buff.dreadblades.up&(energy.base_time_to_max>4+stealthed.rogue-spell_targets%3);
+	if talents[OL.BladeRush] and cooldown[OL.BladeRush].ready and (bladeFlurrySync and not buff[OL.Dreadblades].up and ( energyBaseTimeToMax > 4 + stealthedRogue - targets / 3 )) then
+		return OL.BladeRush;
+	end
 
-		-- killing_spree,if=variable.blade_flurry_sync&variable.killing_spree_vanish_sync&!stealthed.rogue&(debuff.between_the_eyes.up&buff.dreadblades.down&energy.base_deficit>(energy.regen*2+15)|spell_targets.blade_flurry>(2-buff.deathly_shadows.up)|master_assassin_remains>0)
-		if cooldown[OL.KillingSpree].ready and (bladeFlurrySync and killingSpreeVanishSync and not stealthed and ( debuff[OL.BetweenTheEyes].up and not buff[OL.Dreadblades].up and energyDeficit > ( energyRegen * 2 + 15 ) or targets > 2 or masterAssassinRemains > 0 )) then
-			return OL.KillingSpree
+	-- call_action_list,name=stealth_cds,if=!stealthed.all|talent.count_the_odds&!talent.hidden_opportunity&!variable.stealthed_cto;
+	if not stealthedAll or talents[OL.CountTheOdds] and not talents[OL.HiddenOpportunity] and not stealthedCto then
+		local result = Rogue:OutlawStealthCds();
+		if result then
+			return result;
 		end
 	end
 
-	-- blade_rush,if=variable.blade_flurry_sync&(energy.base_time_to_max>2&!buff.dreadblades.up&!buff.flagellation_buff.up|energy<=30|spell_targets>2)
-	if talents[OL.BladeRush] and cooldown[OL.BladeRush].ready and (bladeFlurrySync and ( energyTimeToMax > 2 and not buff[OL.Dreadblades].up and energy <= 30 or targets > 2 )) then
-		return OL.BladeRush
+	-- dreadblades,if=!(variable.stealthed_cto|stealthed.basic|talent.hidden_opportunity&stealthed.rogue)&combo_points<=2&(!talent.marked_for_death|!cooldown.marked_for_death.ready)&target.time_to_die>=10;
+	if talents[OL.Dreadblades] and cooldown[OL.Dreadblades].ready and energy >= 40 and (not ( stealthedCto or stealthedBasic or talents[OL.HiddenOpportunity] and stealthedRogue ) and comboPoints <= 2 and ( not talents[OL.MarkedForDeath] or not cooldown[OL.MarkedForDeath].ready ) and timeToDie >= 10) then
+		return OL.Dreadblades;
 	end
 
-	-- thistle_tea,if=energy.deficit>=100&!buff.thistle_tea.up&(charges=3|buff.adrenaline_rush.up|fight_remains<charges*6)
-	if talents[OL.ThistleTea] and cooldown[OL.ThistleTea].ready and (energyDeficit >= 100 and not buff[OL.ThistleTea].up and ( cooldown[OL.ThistleTea].charges == 3 or buff[OL.AdrenalineRush].up or timeToDie < cooldown[OL.ThistleTea].charges * 6 )) then
-		return OL.ThistleTea
+	-- marked_for_death,line_cd=1.5,target_if=min:target.time_to_die,if=raid_event.adds.up&(target.time_to_die<combo_points.deficit|combo_points.deficit>=cp_max_spend-1)&!buff.dreadblades.up;
+	if talents[OL.MarkedForDeath] and cooldown[OL.MarkedForDeath].ready and (raid_event.adds.up and ( timeToDie < comboPointsDeficit or comboPointsDeficit >= cpMaxSpend - 1 ) and not buff[OL.Dreadblades].up) then
+		return OL.MarkedForDeath;
+	end
+
+	-- marked_for_death,if=raid_event.adds.in>30-raid_event.adds.duration&combo_points.deficit>=cp_max_spend-1&!buff.dreadblades.up;
+	if talents[OL.MarkedForDeath] and cooldown[OL.MarkedForDeath].ready and (comboPointsDeficit >= cpMaxSpend - 1 and not buff[OL.Dreadblades].up) then
+		return OL.MarkedForDeath;
+	end
+
+	-- thistle_tea,if=!buff.thistle_tea.up&(energy.base_deficit>=100|fight_remains<charges*6);
+	if talents[OL.ThistleTea] and cooldown[OL.ThistleTea].ready and (not buff[OL.ThistleTea].up and ( energyBaseDeficit >= 100 or timeToDie < cooldown[OL.ThistleTea].charges * 6 )) then
+		return OL.ThistleTea;
+	end
+
+	-- killing_spree,if=variable.blade_flurry_sync&!stealthed.rogue&debuff.between_the_eyes.up&energy.base_time_to_max>4;
+	if talents[OL.KillingSpree] and cooldown[OL.KillingSpree].ready and (bladeFlurrySync and not stealthedRogue and debuff[OL.BetweenTheEyes].up and energyBaseTimeToMax > 4) then
+		return OL.KillingSpree;
 	end
 end
 
 function Rogue:OutlawFinish()
-	local fd = MaxDps.FrameData
-	local cooldown = fd.cooldown
-	local buff = fd.buff
-	local debuff = fd.debuff
-	local talents = fd.talents
-	local timeToDie = fd.timeToDie
-	local energy = fd.energy
-	local comboPoints = fd.comboPoints
-	local cpMaxSpend = fd.cpMaxSpend
+	local fd = MaxDps.FrameData;
+	local timeTo35 = fd.timeToDie;
+	local timeTo20 = fd.timeToDie;
+	local targetHp = MaxDps:TargetPercentHealth() * 100;
+	local cooldown = fd.cooldown;
+	local buff = fd.buff;
+	local debuff = fd.debuff;
+	local talents = fd.talents;
+	local timeToDie = fd.timeToDie;
+	local energy = UnitPower('player', Enum.PowerType.Energy);
+	local energyMax = UnitPowerMax('player', Enum.PowerType.Energy);
+	local energyPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local energyRegen = select(2,GetPowerRegen());
+	local energyRegenCombined = energyRegen + energy;
+	local energyDeficit = UnitPowerMax('player', Enum.PowerType.Energy) - energy;
+	local energyTimeToMax = energyMax - energy / energyRegen;
+	local comboPoints = UnitPower('player', Enum.PowerType.ComboPoints);
+	local comboPointsMax = UnitPowerMax('player', Enum.PowerType.ComboPoints);
+	local comboPointsPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local comboPointsRegen = select(2,GetPowerRegen());
+	local comboPointsRegenCombined = comboPointsRegen + comboPoints;
+	local comboPointsDeficit = UnitPowerMax('player', Enum.PowerType.ComboPoints) - comboPoints;
+	local comboPointsTimeToMax = comboPointsMax - comboPoints / comboPointsRegen;
 
-	-- between_the_eyes,if=target.time_to_die>3&(debuff.between_the_eyes.remains<4|(runeforge.greenskins_wickers|talent.greenskins_wickers)&!buff.greenskins_wickers.up|!runeforge.greenskins_wickers&!talent.greenskins_wickers&buff.ruthless_precision.up)
-	if cooldown[OL.BetweenTheEyes].ready and energy >= 25 and comboPoints >= 1 and (timeToDie > 3 and ( debuff[OL.BetweenTheEyes].remains < 4 or ( talents[OL.GreenskinsWickers] ) and not buff[OL.GreenskinsWickers].up or not talents[OL.GreenskinsWickers] and buff[OL.RuthlessPrecision].up )) then
-		return OL.BetweenTheEyes
+	-- between_the_eyes,if=target.time_to_die>3&(debuff.between_the_eyes.remains<4|talent.greenskins_wickers&!buff.greenskins_wickers.up|!talent.greenskins_wickers&talent.improved_between_the_eyes&buff.ruthless_precision.up|!talent.greenskins_wickers&set_bonus.tier30_4pc);
+	if cooldown[OL.BetweenTheEyes].ready and energy >= 22 and comboPoints >= 6 and (timeToDie > 3 and ( debuff[OL.BetweenTheEyes].remains < 4 or talents[OL.GreenskinsWickers] and not buff[OL.GreenskinsWickers].up or not talents[OL.GreenskinsWickers] and talents[OL.ImprovedBetweenTheEyes] and buff[OL.RuthlessPrecision].up or not talents[OL.GreenskinsWickers] and MaxDps.tier[30] and MaxDps.tier[30].count and (MaxDps.tier[30].count == 4) )) then
+		return OL.BetweenTheEyes;
 	end
 
-	-- slice_and_dice,if=buff.slice_and_dice.remains<fight_remains&refreshable&(!talent.swift_slasher|combo_points>=cp_max_spend)
-	if energy >= 25 and comboPoints >= 1 and (buff[OL.SliceAndDice].remains < timeToDie and buff[OL.SliceAndDice].refreshable and ( not talents[OL.SwiftSlasher] or comboPoints >= cpMaxSpend )) then
-		return OL.SliceAndDice
+	-- slice_and_dice,if=buff.slice_and_dice.remains<fight_remains&refreshable&(!talent.swift_slasher|combo_points>=cp_max_spend);
+	if energy >= 20 and comboPoints >= 6 and (buff[OL.SliceAndDice].remains < timeToDie and debuff[OL.SliceAndDice].refreshable and ( not talents[OL.SwiftSlasher] or comboPoints >= cpMaxSpend )) then
+		return OL.SliceAndDice;
 	end
 
-	-- cold_blood,if=!(runeforge.greenskins_wickers|talent.greenskins_wickers)
-	if talents[OL.ColdBlood] and cooldown[OL.ColdBlood].ready and not talents[OL.GreenskinsWickers] then
-		return OL.ColdBlood
+	-- cold_blood;
+	if talents[OL.ColdBlood] and cooldown[OL.ColdBlood].ready then
+		return OL.ColdBlood;
 	end
 
-	-- dispatch
-	if energy >= 35 and comboPoints >= 1 then
-		return OL.Dispatch
+	-- dispatch;
+	if energy >= 32 and comboPoints >= 6 then
+		return OL.Dispatch;
 	end
 end
 
 function Rogue:OutlawStealth()
-	local fd = MaxDps.FrameData
-	local energy = fd.energy
-	local comboPoints = fd.comboPoints
-	local finishCondition = fd.finishCondition
+	local fd = MaxDps.FrameData;
+	local timeTo35 = fd.timeToDie;
+	local timeTo20 = fd.timeToDie;
+	local targetHp = MaxDps:TargetPercentHealth() * 100;
+	local cooldown = fd.cooldown;
+	local buff = fd.buff;
+	local debuff = fd.debuff;
+	local talents = fd.talents;
+	local targets = fd.targets and fd.targets or 1;
+	local energy = UnitPower('player', Enum.PowerType.Energy);
+	local energyMax = UnitPowerMax('player', Enum.PowerType.Energy);
+	local energyPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local energyRegen = select(2,GetPowerRegen());
+	local energyRegenCombined = energyRegen + energy;
+	local energyDeficit = UnitPowerMax('player', Enum.PowerType.Energy) - energy;
+	local energyTimeToMax = energyMax - energy / energyRegen;
+	local comboPoints = UnitPower('player', Enum.PowerType.ComboPoints);
+	local comboPointsMax = UnitPowerMax('player', Enum.PowerType.ComboPoints);
+	local comboPointsPct = UnitPower('player')/UnitPowerMax('player') * 100;
+	local comboPointsRegen = select(2,GetPowerRegen());
+	local comboPointsRegenCombined = comboPointsRegen + comboPoints;
+	local comboPointsDeficit = UnitPowerMax('player', Enum.PowerType.ComboPoints) - comboPoints;
+	local comboPointsTimeToMax = comboPointsMax - comboPoints / comboPointsRegen;
 
-	-- dispatch,if=variable.finish_condition
-	if energy >= 35 and comboPoints >= 1 and (finishCondition) then
-		return OL.Dispatch
+	-- blade_flurry,if=talent.subterfuge&talent.hidden_opportunity&spell_targets>=2&!buff.blade_flurry.up;
+	if talents[OL.BladeFlurry] and cooldown[OL.BladeFlurry].ready and energy >= 15 and (talents[OL.Subterfuge] and talents[OL.HiddenOpportunity] and targets >= 2 and not buff[OL.BladeFlurry].up) then
+		return OL.BladeFlurry;
 	end
 
-	-- ambush
-	if energy >= 50 then
-		return OL.Ambush
+	-- cold_blood,if=variable.finish_condition;
+	if talents[OL.ColdBlood] and cooldown[OL.ColdBlood].ready and (finishCondition) then
+		return OL.ColdBlood;
+	end
+
+	-- dispatch,if=variable.finish_condition;
+	if energy >= 32 and comboPoints >= 6 and (finishCondition) then
+		return OL.Dispatch;
+	end
+
+	-- ambush,if=variable.stealthed_cto|stealthed.basic&talent.find_weakness&!debuff.find_weakness.up|talent.hidden_opportunity;
+	if energy >= 50 and (stealthedCto or stealthedBasic and talents[OL.FindWeakness] and not debuff[OL.FindWeakness].up or talents[OL.HiddenOpportunity]) then
+		return OL.Ambush;
 	end
 end
+
+function Rogue:OutlawStealthCds()
+	local fd = MaxDps.FrameData;
+	local timeTo35 = fd.timeToDie;
+	local timeTo20 = fd.timeToDie;
+	local targetHp = MaxDps:TargetPercentHealth() * 100;
+	local cooldown = fd.cooldown;
+	local buff = fd.buff;
+	local debuff = fd.debuff;
+	local talents = fd.talents;
+
+	-- variable,name=vanish_condition,value=talent.hidden_opportunity|!talent.shadow_dance|!cooldown.shadow_dance.ready;
+	local vanishCondition = talents[OL.HiddenOpportunity] or not talents[OL.ShadowDance] or not cooldown[OL.ShadowDance].ready;
+
+	-- variable,name=vanish_opportunity_condition,value=!talent.shadow_dance&talent.fan_the_hammer.rank+talent.quick_draw+talent.audacity<talent.count_the_odds+talent.keep_it_rolling;
+	local vanishOpportunityCondition = not talents[OL.ShadowDance] and (talents[OL.FanTheHammer] and 1 or 0) + (talents[OL.QuickDraw] and 1 or 0) + (talents[OL.Audacity] and 1 or 0) < (talents[OL.CountTheOdds] and 1 or 0) + talents[OL.KeepItRolling];
+
+	-- vanish,if=talent.find_weakness&!talent.audacity&debuff.find_weakness.down&variable.ambush_condition&variable.vanish_condition;
+	if cooldown[OL.Vanish].ready and (talents[OL.FindWeakness] and not talents[OL.Audacity] and not debuff[OL.FindWeakness].up and ambushCondition and vanishCondition) then
+		return OL.Vanish;
+	end
+
+	-- vanish,if=talent.hidden_opportunity&!buff.audacity.up&(variable.vanish_opportunity_condition|buff.opportunity.stack<buff.opportunity.max_stack)&variable.ambush_condition&variable.vanish_condition;
+	if cooldown[OL.Vanish].ready and (talents[OL.HiddenOpportunity] and not buff[OL.Audacity].up and ( vanishOpportunityCondition or buff[OL.Opportunity].count < buff[OL.Opportunity].maxStacks ) and ambushCondition and vanishCondition) then
+		return OL.Vanish;
+	end
+
+	-- vanish,if=(!talent.find_weakness|talent.audacity)&!talent.hidden_opportunity&variable.finish_condition&variable.vanish_condition;
+	if cooldown[OL.Vanish].ready and (( not talents[OL.FindWeakness] or talents[OL.Audacity] ) and not talents[OL.HiddenOpportunity] and finishCondition and vanishCondition) then
+		return OL.Vanish;
+	end
+
+	-- variable,name=shadow_dance_condition,value=talent.shadow_dance&debuff.between_the_eyes.up&(!talent.ghostly_strike|debuff.ghostly_strike.up)&(!talent.dreadblades|!cooldown.dreadblades.ready)&(!talent.hidden_opportunity|!buff.audacity.up&(talent.fan_the_hammer.rank<2|!buff.opportunity.up));
+	local shadowDanceCondition = talents[OL.ShadowDance] and debuff[OL.BetweenTheEyes].up and ( not talents[OL.GhostlyStrike] or debuff[OL.GhostlyStrike].up ) and ( not talents[OL.Dreadblades] or not cooldown[OL.Dreadblades].ready ) and ( not talents[OL.HiddenOpportunity] or not buff[OL.Audacity].up and ( talents[OL.FanTheHammer] < 2 or not buff[OL.Opportunity].up ) );
+
+	-- shadow_dance,if=!talent.keep_it_rolling&variable.shadow_dance_condition&buff.slice_and_dice.up&(variable.finish_condition|talent.hidden_opportunity)&(!talent.hidden_opportunity|!cooldown.vanish.ready);
+	if talents[OL.ShadowDance] and cooldown[OL.ShadowDance].ready and (not talents[OL.KeepItRolling] and shadowDanceCondition and buff[OL.SliceAndDice].up and ( finishCondition or talents[OL.HiddenOpportunity] ) and ( not talents[OL.HiddenOpportunity] or not cooldown[OL.Vanish].ready )) then
+		return OL.ShadowDance;
+	end
+
+	-- shadow_dance,if=talent.keep_it_rolling&variable.shadow_dance_condition&(cooldown.keep_it_rolling.remains<=30|cooldown.keep_it_rolling.remains>120&(variable.finish_condition|talent.hidden_opportunity));
+	if talents[OL.ShadowDance] and cooldown[OL.ShadowDance].ready and (talents[OL.KeepItRolling] and shadowDanceCondition and ( cooldown[OL.KeepItRolling].remains <= 30 or cooldown[OL.KeepItRolling].remains > 120 and ( finishCondition or talents[OL.HiddenOpportunity] ) )) then
+		return OL.ShadowDance;
+	end
+end
+
