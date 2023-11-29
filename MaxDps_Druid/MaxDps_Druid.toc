@@ -1,7 +1,7 @@
 ## Title: MaxDps_Druid
 ## Version: 9.1.1
 ## Author: Kaminaris
-## Interface: 90100
+## Interface: 100200
 ## Dependencies: MaxDps
 ## LoadOnDemand: 1
 ## X-Curse-Project-ID: 103301

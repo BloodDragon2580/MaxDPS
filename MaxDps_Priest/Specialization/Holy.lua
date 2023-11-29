@@ -45,7 +45,6 @@ setmetatable(HL, Priest.spellMeta);
 function Priest:Holy()
     local fd = MaxDps.FrameData;
     local covenantId = fd.covenant.covenantId;
-    fd.targets = MaxDps:SmartAoe();
     local cooldown = fd.cooldown;
     local buff = fd.buff;
     local debuff = fd.debuff;

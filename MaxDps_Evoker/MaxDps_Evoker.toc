@@ -1,7 +1,7 @@
 ## Title: MaxDps_Evoker
 ## Version: 10.0.3
 ## Author: Kaminaris, Skynet
-## Interface: 100002
+## Interface: 100200
 ## Dependencies: MaxDps
 ## LoadOnDemand: 1
 ## X-Curse-Project-ID: 704538

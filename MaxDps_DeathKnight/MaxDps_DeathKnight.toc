@@ -1,7 +1,7 @@
 ## Title: MaxDps_DeathKnight
 ## Version: 10.0.5
 ## Author: Kaminaris
-## Interface: 100002
+## Interface: 100200
 ## Dependencies: MaxDps
 ## LoadOnDemand: 1
 ## SavedVariables: MaxDpsDeathKnightOptions
