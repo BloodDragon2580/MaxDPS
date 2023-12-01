@@ -48,6 +48,7 @@ local GetSpellTabInfo = GetSpellTabInfo;
 local GetSpellBookItemInfo = GetSpellBookItemInfo;
 local GetSpellBookItemName = GetSpellBookItemName;
 local IsInInstance = IsInInstance;
+local IsItemInRange = IsItemInRange;
 local UnitThreatSituation = UnitThreatSituation;
 local GetActiveCovenantID = C_Covenants.GetActiveCovenantID;
 local GetActiveSoulbindID = C_Soulbinds.GetActiveSoulbindID;
@@ -1150,6 +1151,44 @@ function MaxDps:DebuffCounter(spellId, timeShift)
 	end
 
 	return count, totalRemains, totalCount, totalCountRemains;
+end
+
+function MaxDps:SmartAoe(itemId)
+	if self.db.global.forceSingle then
+		return 1;
+	end
+
+	local _, instanceType = IsInInstance();
+	local count, units = self:ThreatCounter();
+
+	local itemToCheck = itemId or 18904;
+
+	-- 5 man content, we count battleground also as small party
+	if self.isMelee then
+		-- 8 yards range
+		itemToCheck = itemId or 61323;
+	elseif instanceType == 'pvp' or instanceType == 'party' then
+		-- 30 yards range
+		itemToCheck = itemId or 7734;
+	elseif instanceType == 'arena' and instanceType == 'raid' then
+		-- 35 yards range
+		itemToCheck = itemId or 18904;
+	end
+
+	count = 0;
+	for i = 1, #units do
+		-- 8 yards range check IsItemInRange blocked on retail in instance since 10.2
+		if not not IsInInstance() then
+		    if IsItemInRange(itemToCheck, units[i]) then
+		    	count = count + 1;
+		    end
+		end
+	end
+
+	if WeakAuras then
+		WeakAuras.ScanEvents('MAXDPS_TARGET_COUNT', count);
+	end
+	return count;
 end
 
 function MaxDps:FormatTime(left)
