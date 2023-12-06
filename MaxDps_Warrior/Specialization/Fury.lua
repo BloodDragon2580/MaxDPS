@@ -51,9 +51,17 @@ function Warrior:Fury()
 	maxHP = UnitHealthMax('player')
 	healthPerc = (curentHP / maxHP) * 100
 	classtable = MaxDps.SpellTable
-    classtable.MeatCleaver = 85739
     classtable.MercilessAssault = 409983
     classtable.Enrage = 184362
+	classtable.Recklessness = 1719
+	classtable.Avatar = 107574
+	classtable.Enrage = 184361
+	classtable.RagingBlow = 85288
+	classtable.Rampage = 184367
+	classtable.MeatCleaver = 280392
+	classtable.Whirlwind = 190411
+	classtable.FuriousBloodthirst = 423211
+	classtable.Execute = 280735
 
     if targets > 1  then
         return Warrior:FuryMultiTarget()
@@ -88,10 +96,6 @@ function Warrior:FurySingleTarget()
     --Cast Odyn's Fury while Enraged. With the T31 set bonus, it should always be used before Avatar.
     if talents[classtable.OdynsFury] and buff[classtable.Enrage].up and cooldown[classtable.OdynsFury].ready then
         return classtable.OdynsFury
-    end
-    --Cast Avatar as the initial 4-second Avatar buff triggered by Odyn's Fury is falling off in order to maximize DoT and Dancing Blades uptime.
-    if talents[classtable.Avatar] and (buff[classtable.Avatarbuff].duration <= 1 and not cooldown[classtable.OdynsFury].ready) and cooldown[classtable.Avatar].ready then
-        return classtable.Avatar
     end
     --Cast Bloodthirst when it has a 100% chance to crit through the Merciless Assault buff (generally 6 stacks with Recklessness).
     if buff[classtable.MercilessAssault].count == 6 and cooldown[classtable.Bloodthirst].ready then
@@ -189,10 +193,6 @@ function Warrior:FuryMultiTarget()
     --Cast Execute only while the Furious Bloodthirst buff is not active.
     if rage >= 30 and targethealthPerc < 20 and not buff[classtable.FuriousBloodthirst].up and cooldown[classtable.Execute].ready then
         return classtable.Execute
-    end
-    --Cast Rampage to spend Rage and maintain Enrage.
-    if rage >= 80 and cooldown[classtable.Rampage].ready then
-        return classtable.Rampage
     end
     --Cast Execute as able.
     if rage >= 30 and targethealthPerc < 20 and cooldown[classtable.Execute].ready then
