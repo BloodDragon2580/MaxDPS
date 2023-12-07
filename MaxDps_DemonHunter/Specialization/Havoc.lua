@@ -205,10 +205,6 @@ function DemonHunter:HavocRotation()
 		return HV.GlaiveTempest
 	end
 
-	if cooldown[HV.ImmolationAura].ready then
-		return HV.ImmolationAura
-	end
-
 	if talents[HV.Felblade] and cooldown[HV.Felblade].ready and fury < 80 then
 		return HV.Felblade
 	end
