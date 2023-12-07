@@ -1,11 +1,9 @@
 ## Title: MaxDps_Druid
-## Version: 9.1.1
+## Version: 20.0.0
 ## Author: Kaminaris
 ## Interface: 100200
 ## Dependencies: MaxDps
 ## LoadOnDemand: 1
-## X-Curse-Project-ID: 103301
-## X-WoWI-ID: 24641
 
 Main.lua
 Specialization/Balance.lua

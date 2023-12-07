@@ -1,11 +1,9 @@
 ## Title: MaxDps_Warlock
-## Version: 10.0.6
+## Version: 20.0.0
 ## Author: Kaminaris
 ## Interface: 100200
 ## Dependencies: MaxDps
 ## LoadOnDemand: 1
-## X-Curse-Project-ID: 91983
-## X-WoWI-ID: 24639
 
 Main.lua
 Specialization\Affliction.lua

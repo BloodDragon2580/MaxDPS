@@ -1,10 +1,9 @@
 ## Title: MaxDps_Evoker
-## Version: 10.0.3
+## Version: 20.0.0
 ## Author: Kaminaris, Skynet
 ## Interface: 100200
 ## Dependencies: MaxDps
 ## LoadOnDemand: 1
-## X-Curse-Project-ID: 704538
 
 Main.lua
 Specialization\Devastation.lua

@@ -5,8 +5,6 @@
 ## Dependencies: MaxDps
 ## LoadOnDemand: 1
 ## SavedVariables: MaxDpsHunterOptions
-## X-Curse-Project-ID: 98966
-## X-WoWI-ID: 24642
 
 Main.lua
 Specialization\Beastmastery.lua

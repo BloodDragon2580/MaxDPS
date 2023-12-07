@@ -76,7 +76,7 @@ function Warrior:FurySingleTarget()
         return classtable.Ravager
     end
     --Cast Recklessness on cooldown or whenever burst damage is needed.
-    if cooldown[classtable.Recklessness].ready then
+    if talents[classtable.Recklessness] and cooldown[classtable.Recklessness].ready then
         return classtable.Recklessness
     end
 
@@ -97,8 +97,12 @@ function Warrior:FurySingleTarget()
     if talents[classtable.OdynsFury] and buff[classtable.Enrage].up and cooldown[classtable.OdynsFury].ready then
         return classtable.OdynsFury
     end
+    --Cast Avatar as the initial 4-second Avatar buff triggered by Odyn's Fury is falling off in order to maximize DoT and Dancing Blades uptime.
+    if talents[classtable.Avatar] and (buff[classtable.Avatar].duration <= 1 and not cooldown[classtable.OdynsFury].ready) and cooldown[classtable.Avatar].ready then
+        return classtable.Avatar
+    end
     --Cast Bloodthirst when it has a 100% chance to crit through the Merciless Assault buff (generally 6 stacks with Recklessness).
-    if buff[classtable.MercilessAssault].count == 6 and cooldown[classtable.Bloodthirst].ready then
+    if talents[classtable.Bloodthirst] and buff[classtable.MercilessAssault].count == 6 and cooldown[classtable.Bloodthirst].ready then
         return classtable.Bloodthirst
     end
     --Cast Bloodbath to consume the Reckless Abandon buff.
@@ -118,7 +122,7 @@ function Warrior:FurySingleTarget()
         return classtable.Execute
     end
     --Cast Rampage to spend Rage and maintain Enrage.
-    if rage >= 80 and cooldown[classtable.Rampage].ready then
+    if talents[classtable.Rampage] and rage >= 80 and cooldown[classtable.Rampage].ready then
         return classtable.Rampage
     end
     --Cast Execute as able.
@@ -126,11 +130,11 @@ function Warrior:FurySingleTarget()
         return classtable.Execute
     end
     --Cast Raging Blow as the main rotational attack.
-    if not talents[classtable.Annihilator] and cooldown[classtable.RagingBlow].ready then
+    if talents[classtable.RagingBlow] and not talents[classtable.Annihilator] and cooldown[classtable.RagingBlow].ready then
         return classtable.RagingBlow
     end
     --Cast Bloodthirst on cooldown to reduce gaps in the rotation.
-    if cooldown[classtable.Bloodthirst].ready then
+    if talents[classtable.Bloodthirst] and cooldown[classtable.Bloodthirst].ready then
         return classtable.Bloodthirst
     end
     --Cast Slam as a filler between Bloodthirst casts.
@@ -149,11 +153,11 @@ function Warrior:FuryMultiTarget()
         return classtable.Ravager
     end
     --Cast Recklessness.
-    if cooldown[classtable.Recklessness].ready then
+    if talents[classtable.Recklessness] and cooldown[classtable.Recklessness].ready then
         return classtable.Recklessness
     end
     --Cast Avatar with Recklessness.
-    if buff[classtable.Recklessness].up and cooldown[classtable.Avatar].ready then
+    if talents[classtable.Avatar] and buff[classtable.Recklessness].up and cooldown[classtable.Avatar].ready then
         return classtable.Avatar
     end
     --Cast Charge whenever out of range.
@@ -194,16 +198,20 @@ function Warrior:FuryMultiTarget()
     if rage >= 30 and targethealthPerc < 20 and not buff[classtable.FuriousBloodthirst].up and cooldown[classtable.Execute].ready then
         return classtable.Execute
     end
+    --Cast Rampage to spend Rage and maintain Enrage.
+    if talents[classtable.Rampage] and rage >= 80 and cooldown[classtable.Rampage].ready then
+        return classtable.Rampage
+    end
     --Cast Execute as able.
     if rage >= 30 and targethealthPerc < 20 and cooldown[classtable.Execute].ready then
         return classtable.Execute
     end
     --Cast Raging Blow as the main rotational attack.
-    if not talents[classtable.Annihilator] and cooldown[classtable.RagingBlow].ready then
+    if talents[classtable.RagingBlow] and not talents[classtable.Annihilator] and cooldown[classtable.RagingBlow].ready then
         return classtable.RagingBlow
     end
     --Cast Bloodthirst on cooldown to reduce gaps in the rotation.
-    if cooldown[classtable.Bloodthirst].ready then
+    if talents[classtable.Bloodthirst] and cooldown[classtable.Bloodthirst].ready then
         return classtable.Bloodthirst
     end
     --Cast Slam as a filler between Bloodthirst casts.
