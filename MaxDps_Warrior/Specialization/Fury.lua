@@ -51,17 +51,11 @@ function Warrior:Fury()
 	maxHP = UnitHealthMax('player')
 	healthPerc = (curentHP / maxHP) * 100
 	classtable = MaxDps.SpellTable
+    classtable.MeatCleaver = 85739
     classtable.MercilessAssault = 409983
     classtable.Enrage = 184362
-	classtable.Recklessness = 1719
-	classtable.Avatar = 107574
-	classtable.Enrage = 184361
-	classtable.RagingBlow = 85288
-	classtable.Rampage = 184367
-	classtable.MeatCleaver = 280392
-	classtable.Whirlwind = 190411
-	classtable.FuriousBloodthirst = 423211
-	classtable.Execute = 280735
+    classtable.Bloodbath = 335096
+    classtable.RecklessAbandonBuff = 396752
 
     if targets > 1  then
         return Warrior:FuryMultiTarget()
@@ -102,11 +96,11 @@ function Warrior:FurySingleTarget()
         return classtable.Avatar
     end
     --Cast Bloodthirst when it has a 100% chance to crit through the Merciless Assault buff (generally 6 stacks with Recklessness).
-    if talents[classtable.Bloodthirst] and buff[classtable.MercilessAssault].count == 6 and cooldown[classtable.Bloodthirst].ready then
+    if MaxDps:FindSpell(classtable.Bloodthirst) and talents[classtable.Bloodthirst] and buff[classtable.MercilessAssault].count == 6 and cooldown[classtable.Bloodthirst].ready then
         return classtable.Bloodthirst
     end
     --Cast Bloodbath to consume the Reckless Abandon buff.
-    if buff[classtable.RecklessAbandon].up and cooldown[classtable.Bloodbath].ready then
+    if MaxDps:FindSpell(classtable.Bloodbath) and buff[classtable.RecklessAbandonBuff].up and cooldown[classtable.Bloodbath].ready then
         return classtable.Bloodbath
     end
     --Cast Thunderous Roar while Enraged.
@@ -134,7 +128,7 @@ function Warrior:FurySingleTarget()
         return classtable.RagingBlow
     end
     --Cast Bloodthirst on cooldown to reduce gaps in the rotation.
-    if talents[classtable.Bloodthirst] and cooldown[classtable.Bloodthirst].ready then
+    if MaxDps:FindSpell(classtable.Bloodthirst) and talents[classtable.Bloodthirst] and cooldown[classtable.Bloodthirst].ready then
         return classtable.Bloodthirst
     end
     --Cast Slam as a filler between Bloodthirst casts.
@@ -183,11 +177,11 @@ function Warrior:FuryMultiTarget()
         return classtable.Avatar
     end
     --Cast Bloodthirst when it has a 100% chance to crit through the Merciless Assault buff (generally 6 stacks with Recklessness).
-    if buff[classtable.MercilessAssault].count == 6 and cooldown[classtable.Bloodthirst].ready then
+    if MaxDps:FindSpell(classtable.Bloodthirst) and buff[classtable.MercilessAssault].count == 6 and cooldown[classtable.Bloodthirst].ready then
         return classtable.Bloodthirst
     end
     --Cast Bloodbath to consume the Reckless Abandon buff.
-    if buff[classtable.RecklessAbandon].up and cooldown[classtable.Bloodbath].ready then
+    if MaxDps:FindSpell(classtable.Bloodbath) and buff[classtable.RecklessAbandonBuff].up and cooldown[classtable.Bloodbath].ready then
         return classtable.Bloodbath
     end
     --Cast Onslaught while Enraged or with Tenderize talented.
@@ -211,7 +205,7 @@ function Warrior:FuryMultiTarget()
         return classtable.RagingBlow
     end
     --Cast Bloodthirst on cooldown to reduce gaps in the rotation.
-    if talents[classtable.Bloodthirst] and cooldown[classtable.Bloodthirst].ready then
+    if MaxDps:FindSpell(classtable.Bloodthirst) and talents[classtable.Bloodthirst] and cooldown[classtable.Bloodthirst].ready then
         return classtable.Bloodthirst
     end
     --Cast Slam as a filler between Bloodthirst casts.
@@ -223,3 +217,4 @@ function Warrior:FuryMultiTarget()
         return classtable.Whirlwind
     end
 end
+
