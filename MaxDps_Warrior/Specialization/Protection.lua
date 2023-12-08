@@ -35,6 +35,8 @@ local currentSpec = GetSpecialization()
 local currentSpecName = currentSpec and select(2, GetSpecializationInfo(currentSpec)) or "None"
 local classtable
 
+--setmetatable(classtable, Warrior.spellMeta)
+
 function Warrior:Protection()
 	fd = MaxDps.FrameData
 	cooldown = fd.cooldown
@@ -50,8 +52,9 @@ function Warrior:Protection()
 	curentHP = UnitHealth('player')
 	maxHP = UnitHealthMax('player')
 	healthPerc = (curentHP / maxHP) * 100
-	classtable = MaxDps.SpellTable
-	setmetatable(classtable, Warrior.spellMeta)
+	classtable = MaxDps["SpellTable"]
+	classtable.ShieldSlam = 23922
+	classtable.Execute = 163201
 
 	if targets > 1 then
 		return Warrior:ProtectionMultiTarget()
