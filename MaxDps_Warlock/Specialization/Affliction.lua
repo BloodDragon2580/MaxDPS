@@ -1,3 +1,4 @@
+
 local _, addonTable = ...
 
 --- @type MaxDps
@@ -32,8 +33,6 @@ local currentSpec = GetSpecialization()
 local currentSpecName = currentSpec and select(2, GetSpecializationInfo(currentSpec)) or "None"
 local classtable
 
---setmetatable(classtable, Warrior.spellMeta)
-
 function Warlock:Affliction()
     fd = MaxDps.FrameData
     cooldown = fd.cooldown
@@ -51,6 +50,7 @@ function Warlock:Affliction()
     classtable = MaxDps.SpellTable
     classtable.CorruptioneDot = 146739
     classtable.ShadowEmbraceDebuff = 32390
+    setmetatable(classtable, Warlock.spellMeta)
 
     MaxDps:GlowCooldown(classtable.SummonDarkglare, cooldown[classtable.SummonDarkglare].ready)
 
