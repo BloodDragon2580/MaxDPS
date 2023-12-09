@@ -1,4 +1,3 @@
-
 local _, addonTable = ...
 
 --- @type MaxDps
@@ -34,6 +33,8 @@ local currentSpec = GetSpecialization()
 local currentSpecName = currentSpec and select(2, GetSpecializationInfo(currentSpec)) or "None"
 local classtable
 
+--setmetatable(classtable, Warrior.spellMeta)
+
 function Warlock:Destruction()
     fd = MaxDps.FrameData
     cooldown = fd.cooldown
@@ -51,8 +52,6 @@ function Warlock:Destruction()
     timeToDie = fd.timeToDie
     classtable = MaxDps.SpellTable
     classtable.ImmolateDot = 157736
-    classtable.RitualofRuinBuff = 387157
-    setmetatable(classtable, Warlock.spellMeta)
 
     MaxDps:GlowCooldown(classtable.SummonInfernal, cooldown[classtable.SummonInfernal].ready)
 
@@ -72,7 +71,7 @@ function Warlock:DestructionSingleTarget()
         return classtable.Immolate
     end
     --Cast  Chaos Bolt if you are about to cap Soul Shards.
-    if (soulShards >= 4 or (talents[classtable.RitualofRuin] and buff[classtable.RitualofRuinBuff].up)) and cooldown[classtable.ChaosBolt].ready then
+    if soulShards >= 4 and cooldown[classtable.ChaosBolt].ready then
         return classtable.ChaosBolt
     end
     --Cast  Soul Fire during Roaring Blaze debuff on the target, when available, if below 4 shards
@@ -92,7 +91,7 @@ function Warlock:DestructionSingleTarget()
         return classtable.Conflagrate
     end
     --Cast  Chaos Bolt to keep the Eradication debuff applied.
-    if ((soulShards >= 2 or (talents[classtable.RitualofRuin] and buff[classtable.RitualofRuinBuff].up)) and (not debuff[classtable.Eradication].up or debuff[classtable.Eradication].duration < 2)) and cooldown[classtable.ChaosBolt].ready then
+    if soulShards >= 2 and (not debuff[classtable.Eradication].up or debuff[classtable.Eradication].duration < 2) and cooldown[classtable.ChaosBolt].ready then
         return classtable.ChaosBolt
     end
     --Cast  Dimensional Rift at 3 charges to avoid overcapping.
@@ -128,11 +127,11 @@ function Warlock:DestructionMultiTarget()
         return classtable.Cataclysm
     end
     --Cast  Rain of Fire if there are 5+ targets with  Havoc  up, or 3+ if on cooldown.
-    if (soulShards >= 3 or (talents[classtable.RitualofRuin] and buff[classtable.RitualofRuinBuff].up)) and cooldown[classtable.RainofFire].ready then
+    if cooldown[classtable.RainofFire].ready then
         return classtable.RainofFire
     end
     --Cast  Chaos Bolt if you have 5 Soul Shards.
-    if (soulShards == 5 or (talents[classtable.RitualofRuin] and buff[classtable.RitualofRuinBuff].up)) and cooldown[classtable.ChaosBolt].ready then
+    if soulShards == 5 and cooldown[classtable.ChaosBolt].ready then
         return classtable.ChaosBolt
     end
     --Cast  Cataclysm.
@@ -140,7 +139,7 @@ function Warlock:DestructionMultiTarget()
         return classtable.Cataclysm
     end
     --Apply  Havoc if a secondary target is present.
-    if talents[classtable.Havoc] and cooldown[classtable.Havoc].ready then
+    if cooldown[classtable.Havoc].ready then
         return classtable.Havoc
     end
     --Cast  Shadowburn if the target will die within 5 seconds.
@@ -152,7 +151,7 @@ function Warlock:DestructionMultiTarget()
         return classtable.ChannelDemonfire
     end
     --Cast  Chaos Bolt to spend Soul Shards.
-    if (soulShards >= 3 or (talents[classtable.RitualofRuin] and buff[classtable.RitualofRuinBuff].up)) and cooldown[classtable.ChaosBolt].ready then
+    if soulShards >= 2 and cooldown[classtable.ChaosBolt].ready then
         return classtable.ChaosBolt
     end
     --Cast  Conflagrate to generate Soul Shards and Backdraft stacks.

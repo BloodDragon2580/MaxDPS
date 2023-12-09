@@ -1,4 +1,3 @@
-
 local _, addonTable = ...
 
 --- @type MaxDps
@@ -33,6 +32,8 @@ local currentSpec = GetSpecialization()
 local currentSpecName = currentSpec and select(2, GetSpecializationInfo(currentSpec)) or "None"
 local classtable
 
+--setmetatable(classtable, Warrior.spellMeta)
+
 function Warlock:Demonology()
     fd = MaxDps.FrameData
     cooldown = fd.cooldown
@@ -49,7 +50,6 @@ function Warlock:Demonology()
     healthPerc = (curentHP / maxHP) * 100
     classtable = MaxDps.SpellTable
     classtable.SoulStrike = 267964
-    setmetatable(classtable, Warlock.spellMeta)
 
     MaxDps:GlowCooldown(classtable.SummonDemonicTyrant, (cooldown[classtable.CallDreadstalkers].duration >= 12 or cooldown[classtable.SummonVilefiend].duration >= 30 or cooldown[classtable.GrimoireFelguard].duration >= 12) and cooldown[classtable.SummonDemonicTyrant].ready)
 
