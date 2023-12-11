@@ -35,8 +35,6 @@ local currentSpec = GetSpecialization()
 local currentSpecName = currentSpec and select(2, GetSpecializationInfo(currentSpec)) or "None"
 local classtable
 
---setmetatable(classtable, Warrior.spellMeta)
-
 function Warrior:Protection()
 	fd = MaxDps.FrameData
 	cooldown = fd.cooldown
@@ -55,6 +53,9 @@ function Warrior:Protection()
 	classtable = MaxDps["SpellTable"]
 	classtable.ShieldSlam = 23922
 	classtable.Execute = 163201
+	classtable.SuddenDeathBuff = 52437
+	--setmetatable(classtable, Warrior.spellMeta)
+
 
 	if targets > 1 then
 		return Warrior:ProtectionMultiTarget()
@@ -99,7 +100,7 @@ function Warrior:ProtectionSingleTarget()
         return classtable.ThunderClap
     end
 	--Cast Execute, if you do not need Rage for survivability
-	if rage >=20 and targethealthPerc < 20 and cooldown[classtable.Execute].ready then
+	if (rage >=20 and targethealthPerc < 20) or (talents[classtable.SuddenDeath] and buff[classtable.SuddenDeathBuff].up) and cooldown[classtable.Execute].ready then
 		return classtable.Execute
 	end
 	--Cast Revenge, if you do not need Rage for survivability
