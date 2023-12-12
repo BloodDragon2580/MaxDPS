@@ -6,5 +6,6 @@
 ## LoadOnDemand: 1
 
 Main.lua
+Specialization\Augmentation.lua
 Specialization\Devastation.lua
 Specialization\Preservation.lua
