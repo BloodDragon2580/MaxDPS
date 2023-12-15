@@ -279,8 +279,6 @@ function MaxDps:AddStandardButton(button)
 end
 
 function MaxDps:Fetch()
-	local inCombat = UnitAffectingCombat("player")
-	local inVehicle = UnitInVehicle("player")
 	self = MaxDps;
 	if self.rotationEnabled then
 		self:DisableRotationTimer();
@@ -329,11 +327,6 @@ function MaxDps:Fetch()
 		self:FetchNeuron();
 	end
 
-    if IsMounted() or inVehicle or not inCombat then
-		self:DisableRotation();
-		return
-    end
-
 	if self.rotationEnabled then
 		self:EnableRotationTimer();
 		self:InvokeNextSpell();
@@ -375,12 +368,23 @@ function MaxDps:FetchDominos()
 end
 
 function MaxDps:FetchAzeriteUI()
-	for i = 1, 24 do
-		local button = _G['AzeriteUIActionButton' .. i];
-		if button then
-			self:AddStandardButton(button);
-		end
-	end
+	--for i = 1, 24 do
+	--	local button = _G['AzeriteUIActionButton' .. i];
+	--	if button then
+	--		self:AddStandardButton(button);
+	--	end
+	--end
+    for b = 1, 8 do
+        for i = 1, 12 do
+            local button = _G['AzeriteActionBar'.. b .. 'Button' .. i];
+            if button then
+				button.GetPagedID = function ()
+					return button.id
+				end
+                self:AddStandardButton(button)
+            end
+        end
+    end
 end
 
 function MaxDps:FetchLUI()
