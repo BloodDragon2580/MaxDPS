@@ -48,6 +48,7 @@ local GetSpellTabInfo = GetSpellTabInfo;
 local GetSpellBookItemInfo = GetSpellBookItemInfo;
 local GetSpellBookItemName = GetSpellBookItemName;
 local IsInInstance = IsInInstance;
+local IsItemInRange = IsItemInRange;
 local UnitThreatSituation = UnitThreatSituation;
 local GetActiveCovenantID = C_Covenants.GetActiveCovenantID;
 local GetActiveSoulbindID = C_Soulbinds.GetActiveSoulbindID;
@@ -1176,6 +1177,14 @@ function MaxDps:SmartAoe(itemId)
 	end
 
 	count = 0;
+	if not IsInInstance() then
+	    for i = 1, #units do
+	    	-- 8 yards range check IsItemInRange blocked on retail in instance since 10.2
+	    	if IsItemInRange(itemToCheck, units[i]) then
+	    		count = count + 1;
+	    	end
+	    end
+	end
 	if IsInInstance() then
 	    for i = 1, #units do
 	    	if MaxDps.isMelee then
