@@ -2,7 +2,7 @@
 ## Notes: Rotation helper framework.
 ## Version: 20.0.0
 ## Author: Kaminaris
-## Interface: 100200
+## Interface: 100205
 ## SavedVariables: MaxDpsOptions
 ## OptionalDependencies: Bartender4, ElvUI, ButtonForge, SVUI_ActionBars, G15Buttons, SyncUI, LUI, Dominos, DiabolicUI, Neuron, LibRangeCheck-2.0
 
