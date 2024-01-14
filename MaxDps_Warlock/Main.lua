@@ -1,4 +1,4 @@
-﻿﻿local addonName, addonTable = ...;
+﻿local addonName, addonTable = ...;
 _G[addonName] = addonTable;
 
 --- @type MaxDps

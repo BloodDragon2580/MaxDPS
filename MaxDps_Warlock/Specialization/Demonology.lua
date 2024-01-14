@@ -1,3 +1,4 @@
+
 local _, addonTable = ...
 
 --- @type MaxDps
