@@ -114,7 +114,6 @@ function Warrior:FurySingleTarget()
     end
     --Cast Execute only while the Furious Bloodthirst buff is not active.
     if (not buff[classtable.FuriousBloodthirstBuff].up) and targethealthPerc < 20 and rage >= 30 and cooldown[classtable.Execute].ready then
-
         return classtable.Execute
     end
     --Cast Rampage to spend Rage and maintain Enrage.
